@@ -67,6 +67,7 @@ const GalleryPage = lazy(() => loadRouteWithRefresh('gallery', loadGalleryPage))
 const LearnPage = lazy(() => loadRouteWithRefresh('learn', loadLearnPage))
 const AchievementsPage = lazy(() => loadRouteWithRefresh('achievements', loadAchievementsPage))
 const CirclePage = lazy(() => loadRouteWithRefresh('circles', () => import('./pages/Circle')))
+const UserGuidePage = lazy(() => loadRouteWithRefresh('guide', () => import('./pages/UserGuide')))
 const MobileHistory = lazy(() => loadRouteWithRefresh('mobile-history', () => import('./pages/Mobile/MobileHistory')))
 const MobileData = lazy(() => loadRouteWithRefresh('mobile-data', () => import('./pages/Mobile/MobileData')))
 
@@ -112,6 +113,7 @@ function DesktopRoutes() {
         <Route path="/error-book" element={<ErrorBook />} />
         <Route path="/friend-links" element={<FriendLinks />} />
         <Route path="/circles" element={<CirclePage />} />
+        <Route path="/guide" element={<UserGuidePage />} />
         <Route path="/*" element={<Navigate to="/" />} />
       </Routes>
       {isAuxiliary && hasLiveBackground && location.pathname === '/gallery' && (
@@ -139,6 +141,7 @@ function DesktopRoutes() {
           <CirclePage embedded />
         </NavigationOverlay>
       )}
+      {isAuxiliary && hasLiveBackground && location.pathname === '/guide' && <UserGuidePage embedded />}
       {isAuxiliary && hasLiveBackground && location.pathname === '/friend-links' && (
         <NavigationOverlay title="网站信息" size="md">
           <FriendLinks embedded />
@@ -163,6 +166,7 @@ function ResponsiveRoutes({ isMobile }: { isMobile: boolean }) {
   if (location.pathname === '/mobile/library') return <MobileLibrary />
   if (location.pathname === '/mobile/settings') return <MobileSettings />
   const mobilePath = location.pathname.replace(/\/$/, '')
+  if (mobilePath === '/mobile/guide' || (isMobile && mobilePath === '/guide')) return <UserGuidePage mobile />
   if (mobilePath === '/mobile/history') return <MobileHistory />
   if (isMobile && mobilePath === '/circles') return <CirclePage mobile />
   if (mobilePath === '/mobile/circles') return <CirclePage mobile />

@@ -94,7 +94,7 @@ export async function auditVisibleUI(page: Page, info: TestInfo, state: string, 
   if (
     audit.violations.length ||
     audit.geometry.length ||
-    /^(pages-login|pages-register|home|learn-exposure|settings-save|circle-动态|song-gallery|song-detail|render-failure-recovery|settlement-complete)$/.test(state)
+    /^(guide-.*|pages-login|pages-register|home|learn-exposure|settings-save|circle-动态|song-gallery|song-detail|render-failure-recovery|settlement-complete)$/.test(state)
   )
     await page.screenshot({ path: info.outputPath(state + '.png'), fullPage: Boolean(audit.violations.length || audit.geometry.length) })
   expect.soft(audit.violations, state + ' accessibility').toEqual([])

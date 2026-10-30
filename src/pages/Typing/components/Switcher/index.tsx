@@ -9,6 +9,7 @@ import SoundSwitcher from '../SoundSwitcher'
 import WordDictationSwitcher from '../WordDictationSwitcher'
 import Tooltip from '@/components/Tooltip'
 import CircleEntry from '@/components/CircleEntry'
+import GuideEntry from '@/components/UserGuide/GuideEntry'
 import { isOpenDarkModeAtom, typingTransVisibleAtom } from '@/store'
 import { CTRL } from '@/utils'
 import { useAtom } from 'jotai'
@@ -189,6 +190,8 @@ export default function Switcher({
       <Tooltip className="h-9 w-9" content="指法图示">
         <HandPositionIllustration />
       </Tooltip>
+
+      <Tooltip content="使用指南"><GuideEntry /></Tooltip>
 
       <Tooltip content="设置">
         <Setting />

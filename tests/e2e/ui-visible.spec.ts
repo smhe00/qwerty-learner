@@ -1,4 +1,5 @@
 import { uiPath, pagesUI } from './ui-test-path'
+import { readGuideLearningState } from './user-guide-state'
 import { chooseLearnInputMode } from './learn-input-mode-harness'
 import { reviewWords, seedAcquisitionSession, seedReviewSession } from './review-flow-harness'
 import { auditVisibleUI, prepareVisibleUI } from './ui-visible-audit'
@@ -17,6 +18,7 @@ test('all mobile menu destinations and lazy return remain readable', async ({ pa
     ['学习记录', '/mobile/history', '学习记录'],
     ['账号与云同步', '/mobile/data', '账号与云同步'],
     ['成就', '/mobile/achievements', '成就'],
+    ['使用指南', '/mobile/guide', '使用指南'],
   ]) {
     await page.getByRole('link', { name: new RegExp('^' + name) }).click()
     await expect(page).toHaveURL(new RegExp(path + '$'))
@@ -410,4 +412,105 @@ test('a route render crash presents recovery actions and preserves the learning 
   await page.getByRole('link', { name: '返回首页', exact: true }).click()
   await expect(page.locator('[data-mobile-menu], .focus-app-shell')).toBeVisible()
   expect(await page.evaluate(() => localStorage.getItem('reviewModeInfo'))).toBe(checkpoint)
+})
+
+test('user guide stays readable and returns without learning or network side effects', async ({ page }, info) => {
+  const desktop = info.project.name.startsWith('desktop')
+  const requests: string[] = []
+  page.on('request', request => { if (new URL(request.url()).pathname.includes('/api/')) requests.push(request.method() + ' ' + new URL(request.url()).pathname) })
+  await page.goto(uiPath(desktop ? '/learn' : '/mobile'))
+  const entry = desktop ? page.locator('[data-guide-entry="toolbar"]') : page.getByRole('link', { name: /^使用指南/ })
+  await expect(entry).toBeVisible()
+  const before = await readGuideLearningState(page)
+  await entry.click()
+  await expect(page.locator('[data-user-guide]')).toBeVisible()
+  if (desktop) await expect(page.getByRole('dialog', { name: '使用指南', exact: true })).toBeVisible()
+  if (desktop) {
+    for (const key of ['Shift+Tab', 'Tab', 'Tab', 'Tab']) {
+      await page.keyboard.press(key)
+      await expect.poll(() => page.getByRole('dialog', { name: '使用指南', exact: true }).evaluate(node => node.contains(document.activeElement))).toBe(true)
+    }
+  }
+  await expect(page.getByRole('button', { name: desktop ? '电脑练习' : '手机学习', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('[data-guide-preview]')).toHaveCount(pagesUI ? 1 : 0)
+  await auditVisibleUI(page, info, 'guide-start')
+  for (const section of ['practice', 'learning', 'records', 'settings']) {
+    const first = page.locator('[data-guide-section="' + section + '"] details').first()
+    await first.locator('summary').click()
+    await expect(first).toHaveAttribute('open', '')
+    await auditVisibleUI(page, info, 'guide-' + section + '-expanded')
+  }
+  await page.getByRole('button', { name: desktop ? '手机学习' : '电脑练习', exact: true }).click()
+  await expect(page.getByRole('button', { name: desktop ? '手机学习' : '电脑练习', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('a')
+  await page.keyboard.press('Enter')
+  expect(await readGuideLearningState(page)).toBe(before)
+  if (desktop) {
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: '使用指南', exact: true })).toHaveCount(0)
+    await expect(page).toHaveURL(new RegExp(uiPath('/learn') + '$'))
+  } else {
+    await page.getByRole('button', { name: '返回首页', exact: true }).first().click()
+    await expect(page.locator('[data-mobile-menu]')).toBeVisible()
+  }
+  expect(await readGuideLearningState(page)).toBe(before)
+  if (pagesUI) expect(requests).toEqual([])
+
+  // Contextual help opens the relevant question and has an explicit return.
+  if (desktop) {
+    await page.getByRole('button', { name: '打开设置对话框' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: '使用指南', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: '使用指南', exact: true })).toBeVisible()
+    await expect(page.locator('[data-guide-section="settings"] details').first()).toHaveAttribute('open', '')
+    await page.getByRole('dialog', { name: '使用指南', exact: true }).getByRole('button', { name: '返回', exact: true }).click()
+  } else {
+    await page.getByRole('link', { name: /^设置/ }).click()
+    await page.getByRole('link', { name: '查看使用指南', exact: true }).click()
+    await expect(page.locator('[data-guide-section="settings"] details').first()).toHaveAttribute('open', '')
+    await page.getByRole('button', { name: '返回设置', exact: true }).first().click()
+    await expect(page.getByRole('heading', { name: '学习设置', exact: true })).toBeVisible()
+  }
+  expect(await readGuideLearningState(page)).toBe(before)
+  if (pagesUI) expect(requests).toEqual([])
+  // Direct guide links and reloads have a valid return even without route state.
+  await page.goto(uiPath(desktop ? '/guide#records' : '/mobile/guide#records'))
+  await expect(page.locator('[data-guide-section="records"] details').first()).toHaveAttribute('open', '')
+  await page.reload()
+  await expect(page.locator('[data-user-guide]')).toBeVisible()
+  await expect(page.locator('[data-guide-section="records"] details').first()).toHaveAttribute('open', '')
+  expect(await readGuideLearningState(page)).toBe(before)
+  await page.getByRole('button', { name: desktop ? '回到学习' : '返回首页', exact: true }).first().click()
+  await expect(page).toHaveURL(new RegExp(uiPath(desktop ? '/learn' : '/mobile') + '$'))
+  if (pagesUI) expect(requests).toEqual([])
+})
+
+test('desktop user guide preserves the active word and isolates practice keys', async ({ page }, info) => {
+  test.skip(!info.project.name.startsWith('desktop'), 'Keyboard learning uses the desktop shell.')
+  await page.goto(uiPath('/learn'))
+  await expect(page.getByRole('button', { name: '开始 Learn', exact: true })).toBeEnabled()
+  await page.keyboard.press('a')
+  const word = page.locator('[data-typing-word]:visible').first()
+  await expect(word).toHaveAttribute('data-typing-active', 'true', { timeout: 30_000 })
+  const spelling = await word.getAttribute('data-typing-word')
+  const before = JSON.parse(await readGuideLearningState(page))
+  await page.locator('[data-guide-entry="toolbar"]').click()
+  const dialog = page.getByRole('dialog', { name: '使用指南', exact: true })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: '电脑练习', exact: true }).click()
+  await page.keyboard.type(spelling!)
+  await page.keyboard.press('Enter')
+  await expect(dialog).toBeVisible()
+  await auditVisibleUI(page, info, 'guide-active-word')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(word).toHaveAttribute('data-typing-word', spelling!)
+  const after = JSON.parse(await readGuideLearningState(page))
+  expect(after.rows).toEqual(before.rows)
+  const oldReview = JSON.parse(Object.fromEntries(before.storage).reviewModeInfo).reviewRecord
+  const newReview = JSON.parse(Object.fromEntries(after.storage).reviewModeInfo).reviewRecord
+  expect(newReview.index).toBe(oldReview.index)
+  expect(newReview.words).toEqual(oldReview.words)
+  await page.keyboard.press('Enter')
+  await expect(word).toHaveAttribute('data-typing-active', 'true')
+  await expect(word).toHaveAttribute('data-typing-word', spelling!)
 })

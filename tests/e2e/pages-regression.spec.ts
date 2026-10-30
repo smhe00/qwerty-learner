@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { readGuideLearningState } from './user-guide-state'
 
 const site = 'https://smhe00.github.io/qwerty-learner/'
 const targetSha = process.env.PAGES_SOURCE_SHA
@@ -217,7 +218,7 @@ test('published Pages: Focus achievements default is accessible on desktop/mobil
     await mobile.goto(site + 'mobile', { waitUntil: 'domcontentloaded' })
     const menu = mobile.locator('[data-mobile-menu]')
     await expect(menu).toBeVisible({ timeout: 20_000 })
-    await expect(menu.locator('.mobile-home-menu a')).toHaveCount(5)
+    await expect(menu.locator('.mobile-home-menu a')).toHaveCount(6)
     await expect(menu.getByText('即将开放', { exact: true })).toHaveCount(0)
     await expect(menu.getByRole('link', { name: /^学习记录/ })).toHaveAttribute('href', '/qwerty-learner/mobile/history')
     await expect(menu.getByRole('link', { name: /^账号与云同步/ })).toHaveAttribute('href', '/qwerty-learner/mobile/data')
@@ -266,4 +267,37 @@ test('published Pages: desktop and phone login entry share an interactive offlin
     await expect(page).toHaveURL(new RegExp(mobile ? '/mobile$' : '/qwerty-learner/$'))
   }
   expect(requests).toEqual([])
+})
+
+test('published Pages: user guide is anonymous, device-aware and read-only', async ({ page, request }) => {
+  test.setTimeout(120_000)
+  const response = await request.get(site + 'source-commit.txt?guide_probe=' + targetSha + '-' + Date.now())
+  expect((await response.text()).trim()).toBe(targetSha)
+  const api: string[] = [], errors: string[] = []
+  page.on('request', r => { if (new URL(r.url()).pathname.includes('/api/')) api.push(r.method() + ' ' + new URL(r.url()).pathname) })
+  page.on('pageerror', error => errors.push(error.message))
+  for (const mobile of [false, true]) {
+    await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 900 })
+    await page.goto(site + (mobile ? 'mobile' : 'learn'), { waitUntil: 'domcontentloaded' })
+    const entry = mobile ? page.getByRole('link', { name: /^使用指南/ }) : page.locator('[data-guide-entry="toolbar"]')
+    await expect(entry).toBeVisible()
+    const before = await readGuideLearningState(page)
+    await entry.click()
+    await expect(page.locator('[data-user-guide]')).toBeVisible()
+    await expect(page.locator('[data-guide-preview]')).toContainText('云同步与在线反馈在此站不可用')
+    await expect(page.getByRole('button', { name: mobile ? '手机学习' : '电脑练习', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    const question = page.locator('[data-guide-section="records"] details').first()
+    await question.locator('summary').click()
+    await expect(question).toHaveAttribute('open', '')
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page.locator('[data-user-guide]')).toBeVisible()
+    await page.keyboard.press('a')
+    expect(await readGuideLearningState(page)).toBe(before)
+    if (mobile) await page.getByRole('button', { name: '返回首页', exact: true }).first().click()
+    else await page.getByRole('dialog', { name: '使用指南', exact: true }).getByRole('button', { name: '返回', exact: true }).click()
+    await expect(entry).toBeVisible()
+    expect(await readGuideLearningState(page)).toBe(before)
+  }
+  expect(api).toEqual([])
+  expect(errors).toEqual([])
 })

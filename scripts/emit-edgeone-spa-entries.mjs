@@ -22,7 +22,7 @@ if (process.env.REACT_APP_DEPLOY_ENV === 'pages') {
   }
   const routes = [
     'admin', 'mobile/admin', 'typing', 'learn', 'analysis', 'gallery',
-    'achievements', 'error-book', 'friend-links', 'mobile',
+    'achievements', 'error-book', 'friend-links', 'guide', 'mobile', 'mobile/guide',
     'mobile/study', 'mobile/account', 'mobile/library', 'mobile/settings',
     'mobile/history', 'mobile/data', 'mobile/achievements', 'circles', 'mobile/circles',
   ]

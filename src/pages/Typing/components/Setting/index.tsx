@@ -1,4 +1,5 @@
 import { openFeedback } from '@/feedback/client'
+import GuideEntry from '@/components/UserGuide/GuideEntry'
 import { TypingContext, TypingStateActionType } from '../../store'
 import AdvancedSetting from './AdvancedSetting'
 import DataSetting from './DataSetting'
@@ -223,7 +224,7 @@ export default function Setting() {
                       </div>
                     </div>
                   </Tab.Group>
-                  <div className="shrink-0 border-t px-4 py-2 text-right"><button type="button" className="min-h-[44px] rounded-lg px-3 text-sm text-indigo-600 dark:text-indigo-300" onClick={() => { setIsOpen(false); window.setTimeout(openFeedback, 350) }}>反馈与建议</button></div>
+                  <div className="flex shrink-0 items-center justify-end gap-5 border-t px-4 py-2"><GuideEntry text section="settings" beforeOpen={closeModal} /><button type="button" className="min-h-[44px] rounded-lg px-3 text-sm text-indigo-600 dark:text-indigo-300" onClick={() => { setIsOpen(false); window.setTimeout(openFeedback, 350) }}>反馈与建议</button></div>
                 </Dialog.Panel>
               </Transition.Child>
             </div>

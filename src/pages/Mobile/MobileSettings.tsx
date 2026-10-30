@@ -187,6 +187,10 @@ export default function MobileSettings() {
         </label>
       </section>
       <section className="mobile-settings-card">
+        <h2>使用帮助</h2>
+        <Link className="mobile-secondary-action" to="/mobile/guide#settings" state={{ guideReturnPath: '/mobile/settings' }} onClick={event => { if (dirty && !window.confirm('设置尚未保存，仍要离开吗？')) event.preventDefault() }}>查看使用指南</Link>
+      </section>
+      <section className="mobile-settings-card">
         <h2>记录与备份</h2>
         <div className="mobile-data-actions">
           <Link className="mobile-secondary-action" to="/mobile/history" onClick={event => { if (dirty && !window.confirm('设置尚未保存，仍要离开吗？')) event.preventDefault() }}>查看学习记录</Link>

@@ -13,7 +13,7 @@ export type NavigationOverlayState = {
 }
 
 export const AUXILIARY_PATHS = new Set([
-  '/gallery', '/analysis', '/achievements', '/error-book', '/friend-links', '/circles',
+  '/gallery', '/analysis', '/achievements', '/error-book', '/friend-links', '/circles', '/guide',
 ])
 
 export function getAuxiliaryBackground(
@@ -74,7 +74,7 @@ export default function NavigationOverlay({ title, size, children }: NavigationO
   }, [background?.pathname, navigate, saved])
 
   return (
-    <Dialog as="div" className="relative z-40" open onClose={close}>
+    <Dialog as="div" className={location.pathname === '/guide' ? 'fixed inset-0 z-40' : 'relative z-40'} open onClose={close}>
       <div className="fixed inset-0 backdrop-blur-[3px]" style={{ background: "var(--focus-backdrop)" }} aria-hidden="true" />
       <div
         className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto p-3 sm:p-5"

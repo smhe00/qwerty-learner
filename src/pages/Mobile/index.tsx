@@ -12,7 +12,7 @@ import { accountManagementHref, openAccountManagement } from '@/sync/account-nav
 import { loadAuth } from '@/sync/auth'
 import { secureLearningEntry } from '@/sync/learning-sync-policy'
 import { useAtomValue } from 'jotai'
-import { BookOpen, ChevronRight, CircleUserRound, Cloud, LayoutGrid, Medal, MessageSquare, Settings2, Users } from 'lucide-react'
+import { BookOpen, BookOpenCheck, ChevronRight, CircleUserRound, Cloud, LayoutGrid, Medal, MessageSquare, Settings2, Users } from 'lucide-react'
 import type { MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -47,6 +47,7 @@ export default function MobilePage() {
       route: '/mobile/data',
     },
     { title: '设置', subtitle: '', icon: Settings2, route: '/mobile/settings' },
+    { title: '使用指南', subtitle: '一分钟入门 · 随时查阅', icon: BookOpenCheck, route: '/mobile/guide' },
   ]
   const resume = checkpoint ? Math.min(checkpoint.index + 1, checkpoint.words.length) : null
 
@@ -113,7 +114,7 @@ export default function MobilePage() {
             <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />
           </button>
           {menus.map((item) => (
-            <Link className="mobile-menu-item" to={item.route} key={item.title}>
+            <Link className="mobile-menu-item" to={item.route} state={item.route === '/mobile/guide' ? { guideReturnPath: '/mobile' } : undefined} key={item.title}>
               <span className="mobile-menu-icon">
                 <item.icon size={20} aria-hidden="true" />
               </span>

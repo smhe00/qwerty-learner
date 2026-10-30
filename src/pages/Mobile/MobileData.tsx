@@ -8,6 +8,7 @@ import { secureLearningEntry } from '@/sync/learning-sync-policy'
 import { downloadManualBackupV4, inspectManualBackupV4File } from '@/sync/manual-backup-v4'
 import { v4FailureCode } from '@/sync/v4-failure-diagnostics'
 import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 /** Presentation only. Backups and cloud writes use the existing audited adapters. */
 export default function MobileData() {
@@ -60,6 +61,7 @@ export default function MobileData() {
             <CloudSyncSetting navigateToTool={navigate} disabled={busy} />
           )}
         </section>
+        <p className="text-sm text-[var(--focus-text-secondary)]"><Link className="mobile-secondary-action" to="/mobile/guide#records" state={{ guideReturnPath: '/mobile/data' }} onClick={event => { if (busyRef.current) event.preventDefault() }}>了解记录、同步与备份</Link></p>
         <section className="mobile-settings-card" aria-label="手机本地备份">
           <h2>本地备份</h2>
           <div className="mobile-data-actions">

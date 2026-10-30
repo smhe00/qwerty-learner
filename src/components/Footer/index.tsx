@@ -1,5 +1,6 @@
 import { DonatingCard } from '../DonatingCard'
 import InfoPanel from '@/components/InfoPanel'
+import GuideEntry from '@/components/UserGuide/GuideEntry'
 import { infoPanelStateAtom } from '@/store'
 import { recordOpenInfoPanelAction } from '@/utils'
 import { useAtom } from 'jotai'
@@ -180,6 +181,7 @@ const Footer: React.FC = () => {
           <IconFlagChina fontSize={16} />
         </button>
 
+        <GuideEntry text />
         <span className="select-none text-gray-500 dark:text-gray-400">QWERTY Plus</span>
         <button
           type="button"

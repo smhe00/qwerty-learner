@@ -57,6 +57,8 @@ test('GitHub Pages 404 deep-link fallback remains available', () => {
     runNotFoundPage('https://smhe00.github.io/qwerty-learner/learn'),
     'https://smhe00.github.io/qwerty-learner/?/learn',
   )
+  assert.equal(runNotFoundPage('https://smhe00.github.io/qwerty-learner/guide#records'), 'https://smhe00.github.io/qwerty-learner/?/guide#records')
+  assert.equal(runNotFoundPage('https://smhe00.github.io/qwerty-learner/mobile/guide'), 'https://smhe00.github.io/qwerty-learner/?/mobile/guide')
 })
 
 
