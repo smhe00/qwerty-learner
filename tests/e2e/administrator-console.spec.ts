@@ -32,7 +32,7 @@ async function isolate(page: Page, legacy = false) {
 }
 function api(page: Page) {
   const calls: { path: string; method: string; bearer?: string }[] = []
-  const state = { revoked: false, overviewError: false, previewError: false, sent: false, deletions: 0 }
+  const state = { revoked: false, overviewError: false, previewError: false, visitsError: false, sent: false, deletions: 0 }
   const item = { id: 'f'.repeat(64), owner: 'a-' + studentId, title: '手机上学习按钮遮挡', createdAt: Date.now() }
   const overview = {
     rows: [
@@ -62,6 +62,7 @@ function api(page: Page) {
     if (path === '/api/auth/me') return reply({ user: bearer === 'Bearer ' + admin.token ? admin.user : student.user })
     if (path === '/api/admin/access') return reply({ administrator: bearer === 'Bearer ' + admin.token })
     if (path === '/api/admin/overview') return state.overviewError ? reply({ message: '统计暂不可用，请重试' }, 503) : reply(overview)
+    if (path === '/api/admin/visits') return state.visitsError ? reply({}, 503) : reply({ today: 3, last7Days: 11 })
     if (path === '/api/admin/storage') return reply({ accounts: 2, objects: 12, reportedBytes: 0, sizeComplete: false })
     if (path === '/api/admin/idle') {
       if (r.method() === 'GET' && new URL(r.url()).searchParams.has('cursor') && state.previewError)
@@ -253,6 +254,77 @@ test('administrator legacy SMHE credentials require an explicit admin login', as
   expect(network.calls).toEqual([])
   expect(await page.evaluate(() => (window as any).__adminDatabaseOpens)).toEqual([])
   expect(await page.evaluate(() => sessionStorage.getItem('qwerty.administrator.session.v1'))).toBeNull()
+})
+
+test('administrator access ID reporting failure never blocks ordinary login or changes learning storage', async ({ page }, info) => {
+  test.skip(pagesUI, 'Pages never reports visit statistics.')
+  await page.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { configurable: true, value: false }))
+  let sent = 0
+  const ids = new Set<string>()
+  await page.route('**/api/visits', async route => {
+    sent++
+    expect(route.request().method()).toBe('POST')
+    expect(route.request().postData()).toBeNull()
+    expect(route.request().headers().authorization).toBeUndefined()
+    const id = route.request().headers().cookie?.match(/(?:^|;\s*)qp_uv=([a-f0-9]{32})(?=;|$)/)?.[1]
+    expect(id).toBeTruthy()
+    if (id) ids.add(id)
+    await route.abort('failed')
+  })
+  await page.goto(uiPath('/mobile/account'))
+  await expect(page.getByRole('heading', { name: '登录 QWERTY Plus', exact: true })).toBeVisible()
+  await expect.poll(() => sent).toBeGreaterThanOrEqual(1)
+  const beforeReload = sent
+  await page.reload()
+  await expect(page.getByRole('heading', { name: '登录 QWERTY Plus', exact: true })).toBeVisible()
+  await expect.poll(() => sent).toBeGreaterThan(beforeReload)
+  expect(ids.size).toBe(1)
+  await page.getByLabel('用户名', { exact: true }).fill('ordinary-user')
+  await page.getByLabel('账户密码', { exact: true }).fill('synthetic-password')
+  await expect(page.getByRole('button', { name: '登录', exact: true })).toBeEnabled()
+  await expect(page.getByText('学习数据安全检查未通过', { exact: true })).toHaveCount(0)
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => /visit|analytics|metric|qp_uv/.test(key)))).toEqual([])
+  await auditVisibleUI(page, info, 'ordinary-login-ignores-access-statistics-failure')
+})
+
+test('administrator access ID cards use daily totals and remain separate from learning', async ({ page }, info) => {
+  await isolate(page)
+  const network = api(page)
+  await network.ready
+  await page.goto(uiPath('/admin'))
+  if (pagesUI) await page.getByRole('button', { name: '查看管理界面示意', exact: true }).click()
+  else {
+    await page.getByLabel('管理员密码').fill('synthetic-password')
+    await page.getByRole('button', { name: '进入管理控制台', exact: true }).click()
+  }
+  await expect(page.getByRole('heading', { name: '运营概览', exact: true })).toBeVisible()
+  const cards = page.locator('[data-visitor-counts]')
+  await expect(cards.getByRole('heading', { name: '今日访问 ID 数', exact: true })).toBeVisible()
+  await expect(cards.getByRole('heading', { name: '近7日累计 ID 数', exact: true })).toBeVisible()
+  await expect(cards.locator('strong')).toHaveText(pagesUI ? ['28', '96'] : ['3', '11'])
+  await expect(page.getByText(/每个 ID 每日最多计 1 次，近 7 日按日相加/)).toBeVisible()
+  await auditVisibleUI(page, info, 'administrator-daily-access-id-counts')
+  await page.screenshot({ path: info.outputPath('administrator-daily-access-id-counts.png'), fullPage: true })
+  expect(network.calls.filter(c => c.path === '/api/visits')).toEqual([])
+  await untouched(page, network.calls)
+})
+
+test('administrator missing access statistics is silently unknown rather than zero', async ({ page }) => {
+  test.skip(pagesUI, 'Pages uses explicit sample data and never requests private statistics.')
+  await isolate(page)
+  const network = api(page)
+  network.state.visitsError = true
+  await network.ready
+  await page.goto(uiPath('/admin'))
+  await page.getByLabel('管理员密码').fill('synthetic-password')
+  await page.getByRole('button', { name: '进入管理控制台', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '运营概览', exact: true })).toBeVisible()
+  await expect(page.locator('[data-visitor-counts] strong')).toHaveText(['—', '—'])
+  await expect(page.getByText('已核对普通账号', { exact: true })).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await page.getByRole('tab', { name: '用户使用', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '用户使用', exact: true })).toBeVisible()
+  await untouched(page, network.calls)
 })
 
 test('administrator sealed anonymous workspace roundtrip returns to ordinary login', async ({ page }) => {

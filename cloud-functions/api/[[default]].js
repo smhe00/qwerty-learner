@@ -1,4 +1,5 @@
 import { createAdministratorOverview } from '../_shared/administrator-overview.js'
+import { readVisitorCounts, recordVisitor } from '../_shared/visitor-counts.js'
 import { createAccountDeletionReceipts } from '../_shared/account-deletion-receipts.js'
 import { isStartupSyncRead, withCircleBlobClients } from '../_shared/blob-clients.js'
 import { profileCircleRequest } from '../_shared/circle/profile.js'
@@ -352,6 +353,11 @@ function receiveRoutedJson(request, path, env) {
 export async function onRequest(context) {
   const { request } = context
   const path = new URL(request.url).pathname.replace(/^\/api(?=\/|$)/, '')
+  // Public aggregate-only analytics never enters authentication, learning,
+  // handoff or idle-maintenance scopes. Its response is always best-effort 204.
+  if (path === '/visits') {
+    return recordVisitor(request, () => getStore({ name: runtimeEnvironment(context.env).BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }))
+  }
   // Maker may release the original body across asynchronous Blob lookups.
   // Receive Circle writes immediately, exactly once, before handoff classification.
   // Authentication/rate checks still precede every Circle business operation.
@@ -501,6 +507,13 @@ async function onUncoordinatedRequest(context, receivedBody = null, nativeV4Body
         store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }), administrator,
       }).read(user, url.searchParams.get('cursor') || '')
       // A revoked administrator cannot receive a completed sensitive scan.
+      await service.me(bearer(request))
+      return json({ ok: true, ...result }, 200, cors)
+    }
+    if (path === '/admin/visits' && request.method === 'GET') {
+      const { user } = await service.me(bearer(request))
+      await idle.requireAdmin({ ...user, normalizedUsername: user.username.toLowerCase(), status: 'active' })
+      const result = await readVisitorCounts(getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }))
       await service.me(bearer(request))
       return json({ ok: true, ...result }, 200, cors)
     }

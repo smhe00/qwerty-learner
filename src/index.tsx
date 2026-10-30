@@ -8,6 +8,7 @@ import { administratorHint, isAdministratorPath, readAdministratorSession } from
 // Global resets must load from the document entry, before any lazy UI styles.
 // Feature modules must never import index.css (see the CSS ownership gate).
 import './index.css'
+import { scheduleVisitorCount } from './metrics/visitor-count'
 import { captureFeedbackRecoveryLink } from './feedback/recovery-link'
 import { loadAuth } from './sync/auth'
 import { presentSafetyDialog, showInformationDialog } from './sync/dialog-presentation'
@@ -236,6 +237,7 @@ async function start(): Promise<void> {
       await mountAdministratorApplication(root)
       return
     }
+    if (!administratorReturn) scheduleVisitorCount()
     if (administratorReturn) {
       const { offerAdministratorReturnRecovery } = await import('./admin/return-recovery')
       if (await offerAdministratorReturnRecovery(root)) return

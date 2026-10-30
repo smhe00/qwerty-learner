@@ -20,6 +20,7 @@ type Row = {
   metadataAvailable: boolean
 }
 type Overview = { rows: Row[]; nextCursor: string | null; asOf: string }
+type Visitors = { today: number; last7Days: number }
 type Cleanup = {
   executionEnabled: boolean
   results: { userId?: string; username?: string; action: string; expiresAt?: string }[]
@@ -57,6 +58,7 @@ export default function AdministratorApplication({ admissionError = '' }: { admi
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [overview, setOverview] = useState<Overview | null>(null)
+  const [visitors, setVisitors] = useState<Visitors | null>(null)
   const [excludeTests, setExcludeTests] = useState(true)
   const [cleanup, setCleanup] = useState<Cleanup | null>(null)
   const [cleanupCursor, setCleanupCursor] = useState('')
@@ -118,6 +120,14 @@ export default function AdministratorApplication({ admissionError = '' }: { admi
     if (preview) {
       setOverview(demo)
       return
+    }
+    if (!next) {
+      void administrationRequest<Visitors>('/api/admin/visits')
+        .then((result) => {
+          if (alive.current && Number.isSafeInteger(result.today) && Number.isSafeInteger(result.last7Days) && result.today >= 0 && result.last7Days >= result.today)
+            setVisitors(result)
+        })
+        .catch(() => { /* Missing statistics must not interrupt administration. */ })
     }
     const result = await administrationRequest<Overview>('/api/admin/overview?cursor=' + encodeURIComponent(next))
     if (alive.current)
@@ -339,6 +349,22 @@ export default function AdministratorApplication({ admissionError = '' }: { admi
               </p>
             )}
             {notice && <p role="status">{notice}</p>}
+            {tab === 0 && (
+              <>
+                <div className="admin-metrics" data-visitor-counts>
+                  {[
+                    ['今日访问 ID 数', preview ? 28 : visitors?.today ?? '—'],
+                    ['近7日累计 ID 数', preview ? 96 : visitors?.last7Days ?? '—'],
+                  ].map(([label, value]) => (
+                    <article className="admin-card" key={label}>
+                      <h2>{label}</h2>
+                      <strong>{value}</strong>
+                    </article>
+                  ))}
+                </div>
+                <p className="admin-note">包含未登录访问；每个 ID 每日最多计 1 次，近 7 日按日相加（含今日）。按北京时间统计。</p>
+              </>
+            )}
             {tab < 2 && (
               <>
                 <label className="admin-check">
@@ -356,9 +382,9 @@ export default function AdministratorApplication({ admissionError = '' }: { admi
                         </article>
                       ))}
                     </div>
-                    <p className="admin-note">核对时间：{date(overview.asOf)}。统计按当前已读取的账号与事件计算，列表受云端可见性影响。</p>
+                    <p className="admin-note">账号与练习核对时间：{date(overview.asOf)}。下列统计按当前已读取的账号与事件计算，列表受云端可见性影响。</p>
                     {(overview.nextCursor || rows.some((r) => !r.historyComplete || !r.metadataAvailable)) && (
-                      <p className="admin-info">统计尚不完整，当前数字是已核对范围，不能当作全站总量。部分历史或元数据尚未读取。</p>
+                      <p className="admin-info">账号与练习统计尚不完整，当前数字是已核对范围，不能当作全站总量。部分历史或元数据尚未读取。</p>
                     )}
                     {overview.nextCursor && (
                       <button disabled={busy} onClick={() => void run(() => load(overview.nextCursor || ''))}>
@@ -392,7 +418,7 @@ export default function AdministratorApplication({ admissionError = '' }: { admi
                   </>
                 )}
                 <section className="admin-card">
-                  <h2>统计口径</h2>
+                  <h2>云端账号与练习口径</h2>
                   <p>
                     云端活跃来自认证 / 同步活动，按 UTC 日去重。学习量来自已提交的 V2
                     学习事件，按练习标识去重；历史全量备份内的旧记录、未登录和离线尚未上传的学习不在这里计数。

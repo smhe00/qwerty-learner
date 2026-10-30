@@ -38,6 +38,20 @@ test('real gateway enforces live sessions and server admin role for private feed
     assert.equal(admin.data.user.username, 'admin')
     assert.equal((await call('/admin/access', { token: admin.data.token })).data.administrator, true)
     assert.equal((await call('/admin/overview', { token: normal.data.token })).status, 403)
+    assert.equal((await call('/admin/visits')).status, 401)
+    assert.equal((await call('/admin/visits', { token: normal.data.token })).status, 403)
+    const cookie = 'qp_uv=' + 'e'.repeat(32)
+    const visit = await onRequest({ env, request: new Request('https://example.test/api/visits', {
+      method: 'POST', headers: { 'sec-fetch-site': 'same-origin', cookie },
+    }) })
+    assert.equal(visit.status, 204)
+    await onRequest({ env, request: new Request('https://example.test/api/visits', {
+      method: 'POST', headers: { 'sec-fetch-site': 'same-origin', cookie },
+    }) })
+    const visits = await call('/admin/visits', { token: admin.data.token })
+    assert.equal(visits.status, 200)
+    assert.equal(visits.data.today, 1)
+    assert.equal(visits.data.last7Days, 1)
     const overview = await call('/admin/overview', { token: admin.data.token })
     assert.equal(overview.status, 200)
     assert.ok(overview.data.rows.every(row => row.id !== admin.data.user.userId))
@@ -56,6 +70,7 @@ test('real gateway enforces live sessions and server admin role for private feed
     assert.equal((await call('/admin/logout', { token: normal.data.token, body: {} })).status, 403)
     assert.equal((await call('/admin/logout', { token: admin.data.token, body: {} })).status, 200)
     assert.equal((await call('/admin/overview', { token: admin.data.token })).status, 401)
+    assert.equal((await call('/admin/visits', { token: admin.data.token })).status, 401)
     await call('/auth/login', { body: { username: 'feedbacktest', password: 'synthetic-password' } })
     assert.equal((await call(path, { token: normal.data.token })).status, 401)
   } finally { delete globalThis.__feedbackRouteStore }

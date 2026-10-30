@@ -6,6 +6,7 @@ on:
       - product/main
     paths:
       - 'src/admin/**'
+      - 'src/metrics/**'
       - 'tests/e2e/administrator-*.ts'
       - 'cloud-functions/**'
       - 'tests/cloud/**'
