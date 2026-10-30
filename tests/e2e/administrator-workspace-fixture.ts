@@ -13,6 +13,7 @@ const seal = buildSync({
   bundle: true,
   write: false,
   platform: 'browser',
+  target: 'es2020',
   format: 'iife',
   globalName: 'adminWitnessFixture',
 }).outputFiles[0].text

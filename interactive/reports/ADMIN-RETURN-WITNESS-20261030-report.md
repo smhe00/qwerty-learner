@@ -58,3 +58,7 @@ Revalidation on the integrated source: 39 focused S1/login/V4/SPA contracts PASS
 Final integrated/polished production build + CSS ownership PASS; 18 final phone/PC light/dark return/recovery cases PASS (35.2 s), including fallback writer and interruption replay. Recovery consent screen manually reviewed: short heading, explicit backup consent, 44px primary/retry/return controls and no clipped primary action. The post-integration TypeScript output also matches the unchanged 149-line baseline. Local-only boot does not emit a false startup-sync-timeout notice.
 
 Final publication parent 58b0c4293ebd8892f10390aa4a602241b0d701f2 adds only the guide executor documentation checkpoint on top of d11b924b; both updated guide documents are retained unchanged. No runtime/test source changed after the integration validation.
+
+## CI fixture compatibility follow-up
+
+Initial source f137767e23096f475e226feae1bd5d8b5e75c273 passed Cloud backend contracts/lint/build, startup recovery, private feedback, P4b and Learn gates, but the visible-UI gate stopped while collecting tests: locked CI esbuild inherited the repository ES5 tsconfig for the new browser fixture. Local installed esbuild did not expose that default difference. Explicitly target ES2020 for this test-only IIFE, matching the supported Chromium test runtime. Application bundle, storage checks and test assertions remain unchanged. Collection now includes all 84 administrator cases; exact-SHA Pages/Cloud admission must pass on the follow-up before etest moves.
