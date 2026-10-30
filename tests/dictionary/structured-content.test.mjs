@@ -6,7 +6,7 @@ import test from 'node:test'
 import { buildSync } from 'esbuild'
 
 const source = new URL('../../src/utils/dictionaryContent.ts', import.meta.url)
-const bundled = buildSync({ entryPoints: [fileURLToPath(source)], bundle: true, platform: 'node', format: 'esm', write: false })
+const bundled = buildSync({ entryPoints: [fileURLToPath(source)], bundle: true, target: 'node20', platform: 'node', format: 'esm', write: false })
 const { createDictionaryContent, getDictionaryContent, getDictionaryMeaning, dictionaryContentKinds } =
   await import('data:text/javascript;base64,' + Buffer.from(bundled.outputFiles[0].text).toString('base64'))
 const words = JSON.parse(readFileSync(new URL('../../public/dicts/ShanghaiZhongkao2027.json', import.meta.url), 'utf8'))

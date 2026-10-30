@@ -5,7 +5,7 @@ import { buildSync } from 'esbuild'
 
 const path = new URL('../public/dicts/ShanghaiZhongkao2027.json', import.meta.url)
 const result = buildSync({ entryPoints: [fileURLToPath(new URL('../src/utils/dictionaryContent.ts', import.meta.url))],
-  bundle: true, platform: 'node', format: 'esm', write: false })
+  bundle: true, target: 'node20', platform: 'node', format: 'esm', write: false })
 const { createDictionaryContent } = await import('data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64'))
 const words = JSON.parse(readFileSync(path, 'utf8'))
 const projected = words.map(word => ({ ...word, content: createDictionaryContent(word.trans) }))
