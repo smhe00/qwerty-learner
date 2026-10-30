@@ -3,11 +3,87 @@ import {
   readReviewModeInfo,
   reviewWords,
   seedAcquisitionSession,
+  seedReviewSession,
   startTyping,
   waitForActiveLearnSession,
   waitForRenderedWord,
   gotoReviewAppReady,
 } from './review-flow-harness'
+
+test('mouse exclusion during spelling never returns from the optional pool in the same round', async ({ page }) => {
+  await gotoReviewAppReady(page, '/typing')
+  await seedReviewSession(page, reviewWords.slice(0, 2), 944030)
+  await page.evaluate((extraWords) => {
+    const info = JSON.parse(localStorage.getItem('reviewModeInfo')!)
+    info.reviewRecord.sessionKind = 'acquisition'
+    info.reviewRecord.acquisitionStates = Object.fromEntries(
+      info.reviewRecord.words.map((word: { name: string }) => [word.name, {
+        version: 1, phase: 'supported', assistedCycles: 0,
+      }]),
+    )
+    // The removed current word is also an unseen fallback candidate. The
+    // next supported word needs two intervening items and consults this pool.
+    info.reviewRecord.optionalNewWords = [info.reviewRecord.words[0], ...extraWords]
+    localStorage.setItem('reviewModeInfo', JSON.stringify(info))
+  }, [reviewWords[2], { name: 'accurate', trans: [], usphone: '', ukphone: '' }])
+  await page.goto('/learn')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+  await page.keyboard.type('ca')
+  page.once('dialog', async dialog => {
+    expect(dialog.message()).toContain('移出学习计划')
+    await dialog.accept()
+  })
+  await page.getByRole('button', { name: 'Learn 单词菜单', exact: true }).click()
+  await page.getByRole('button', { name: '移出学习计划', exact: true }).click()
+  await waitForRenderedWord(page, 'analyse')
+  await page.keyboard.type('analyse')
+  await expect.poll(async () => (await readReviewModeInfo(page))?.reviewRecord?.index).toBe(1)
+  const after = (await readReviewModeInfo(page)).reviewRecord
+  expect(after.words.some((word: { name: string }) => word.name === 'cancel')).toBe(false)
+  expect(after.optionalNewWords.map((word: { name: string }) => word.name)).toEqual(['numerous', 'accurate'])
+  expect(after.words.map((word: { name: string }) => word.name)).toContain('accurate')
+  expect(after.acquisitionStates.cancel).toBeUndefined()
+  await waitForRenderedWord(page, 'numerous')
+
+  // Finish another genuine keyboard attempt before reloading the durable
+  // checkpoint; no pre-boot fixture runs again and overwrites the exclusion.
+  await page.keyboard.type('numerous')
+  await expect.poll(async () => (await readReviewModeInfo(page))?.reviewRecord?.index).toBe(2)
+  await page.reload()
+  const resumed = await waitForActiveLearnSession(page)
+  expect(resumed.reviewRecord.words.some((word: { name: string }) => word.name === 'cancel')).toBe(false)
+  expect(resumed.reviewRecord.optionalNewWords.some((word: { name: string }) => word.name === 'cancel')).toBe(false)
+  const persisted = await page.evaluate(async () => {
+    const request = indexedDB.open('RecordDB')
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    try {
+      const tx = db.transaction(['reviewWordStates', 'wordRecords', 'reviewRecords'])
+      const read = (store: string) => new Promise<any[]>((resolve, reject) => {
+        const query = tx.objectStore(store).getAll()
+        query.onsuccess = () => resolve(query.result)
+        query.onerror = () => reject(query.error)
+      })
+      const [states, history, sessions] = await Promise.all([
+        read('reviewWordStates'), read('wordRecords'), read('reviewRecords'),
+      ])
+      return {
+        lifecycle: states.find(row => row.dict === 'cet4' && row.word === 'cancel')?.lifecycle,
+        history: history.filter(row => row.dict === 'cet4').map(row => row.word),
+        session: sessions.find(row => row.id === 944030),
+      }
+    } finally { db.close() }
+  })
+  expect(persisted.lifecycle).toBe('excluded')
+  expect(persisted.history).toEqual(expect.arrayContaining(['analyse', 'numerous']))
+  expect(persisted.history).not.toContain('cancel')
+  expect(persisted.session.words.some((word: { name: string }) => word.name === 'cancel')).toBe(false)
+  expect(persisted.session.optionalNewWords.some((word: { name: string }) => word.name === 'cancel')).toBe(false)
+  await expect(page.getByText('学习数据安全检查未通过', { exact: true })).toHaveCount(0)
+})
 
 test('Learn exposes only one unfinished session and cannot create a duplicate from the plan page', async ({
   page,

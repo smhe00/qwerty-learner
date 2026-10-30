@@ -21,9 +21,10 @@ import {
   rebuildBasicStateFromWordRecords,
   shouldDropPrematureAcquisitionState,
 } from '../../src/review/rebuild'
-import { sanitizeLearnSessionLifecycle } from '../../src/learn/lifecycle'
+import { pruneLearnSessionWord, sanitizeLearnSessionLifecycle } from '../../src/learn/lifecycle'
 import { createInitialReviewWordState } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
+import type { IReviewRecord } from '../../src/utils/db/record'
 import type { Word } from '../../src/typings'
 
 function record(input: {
@@ -97,6 +98,73 @@ function word(name: string): Word {
     ukphone: '',
   }
 }
+
+for (const pool of ['spacingWords', 'optionalNewWords'] as const) {
+  test(`excluded word cannot return through the ${pool} pool later in the same round`, () => {
+    const target = word('pending')
+    const state = { ...createLearnAcquisitionState(), phase: 'supported' as const }
+    const checkpoint: IReviewRecord = {
+      dict: 'backup-regression', index: 0, createTime: 100, isFinished: false,
+      sessionKind: 'acquisition', words: [word('removed'), target],
+      acquisitionStates: { removed: createLearnAcquisitionState(), pending: state },
+      [pool]: [word('removed'), word('other-a'), word('other-b')],
+    }
+    const before = structuredClone(checkpoint)
+    const pruned = pruneLearnSessionWord(checkpoint, 'removed')
+    const continued = resolveLearnAcquisitionCompletion({
+      queue: pruned.words, currentIndex: pruned.index, currentWord: target,
+      state, acquisitionStates: pruned.acquisitionStates ?? {},
+      record: record({ word: target.name, timeStamp: 101, policyVersion: 'learn-acquisition-supported-v1' }),
+      now: 101, spacingWords: pruned.spacingWords, optionalNewWords: pruned.optionalNewWords,
+    })
+    assert.equal(continued.projection.queue.some(item => item.name === 'removed'), false)
+    assert.deepEqual(pruned[pool]?.map(item => item.name), ['other-a', 'other-b'])
+    assert.ok(continued.projection.queue.some(item => item.name === 'other-a'))
+    assert.ok(continued.projection.queue.some(item => item.name === 'other-b'))
+    assert.equal(continued.acquisitionStates.removed, undefined)
+    assert.equal(pruned.index, 0)
+    assert.equal(pruned.isFinished, false)
+    assert.deepEqual(checkpoint, before)
+    assert.equal(pruneLearnSessionWord(pruned, 'removed'), pruned)
+  })
+}
+
+test('exclusion clears candidate-only references without moving the active cursor', () => {
+  const state = createLearnAcquisitionState()
+  const checkpoint: IReviewRecord = {
+    dict: 'backup-regression', index: 1, createTime: 100, isFinished: false,
+    words: [word('past'), word('pending')],
+    spacingWords: [word('removed'), word('kept')],
+    optionalNewWords: [word('removed')],
+    acquisitionStates: { removed: state, pending: state },
+    itemKinds: { removed: 'acquisition', pending: 'acquisition' },
+    reinforcementCounts: { removed: 1, pending: 0 },
+  }
+  const pruned = pruneLearnSessionWord(checkpoint, 'removed')
+  assert.deepEqual(pruned.words, checkpoint.words)
+  assert.equal(pruned.index, 1)
+  assert.equal(pruned.isFinished, false)
+  assert.deepEqual(pruned.spacingWords?.map(item => item.name), ['kept'])
+  assert.deepEqual(pruned.optionalNewWords, [])
+  assert.deepEqual(Object.keys(pruned.acquisitionStates ?? {}), ['pending'])
+  assert.deepEqual(Object.keys(pruned.itemKinds ?? {}), ['pending'])
+  assert.deepEqual(Object.keys(pruned.reinforcementCounts ?? {}), ['pending'])
+  assert.equal(pruneLearnSessionWord(pruned, 'removed'), pruned)
+})
+
+test('excluding the final queued word finishes the round and clears both fallback pools', () => {
+  const checkpoint: IReviewRecord = {
+    dict: 'backup-regression', index: 0, createTime: 100, isFinished: false,
+    words: [word('removed'), word('removed')],
+    spacingWords: [word('removed')], optionalNewWords: [word('removed')],
+  }
+  const pruned = pruneLearnSessionWord(checkpoint, 'removed')
+  assert.deepEqual(pruned.words, [])
+  assert.deepEqual(pruned.spacingWords, [])
+  assert.deepEqual(pruned.optionalNewWords, [])
+  assert.equal(pruned.index, 0)
+  assert.equal(pruned.isFinished, true)
+})
 
 test('backup regression: first introduction consumes quota even before admission', () => {
   const now = Math.floor(

@@ -55,10 +55,6 @@ export function decideLearningLifecycleTransition(
 }
 
 /**
- * Remove every occurrence of a word from an unfinished Learn/Review session
- * while preserving the logical cursor.
- */
-/**
  * Reconcile an unfinished Learn checkpoint with persistent lifecycle state.
  *
  * Review sessions may contain only ACTIVE words. Acquisition sessions may
@@ -103,12 +99,21 @@ export function sanitizeLearnSessionLifecycle(
   return sanitized
 }
 
+/** Remove a word from the queue AND every source that can enqueue it again. */
 export function pruneLearnSessionWord(
   record: IReviewRecord,
   word: string,
 ): IReviewRecord {
   const originalWords = record.words
-  if (!originalWords.some((item) => item.name === word)) return record
+  const isQueued = originalWords.some((item) => item.name === word)
+  const isCandidate = [record.spacingWords, record.optionalNewWords].some(
+    (pool) => pool?.some((item) => item.name === word),
+  )
+  const hasState = [
+    record.exercisePlans, record.reinforcementCounts, record.itemKinds,
+    record.itemStates, record.acquisitionStates, record.hintStates,
+  ].some((states) => states && Object.prototype.hasOwnProperty.call(states, word))
+  if (!isQueued && !isCandidate && !hasState) return record
 
   const boundedIndex = Math.min(
     Math.max(record.index, 0),
@@ -132,44 +137,14 @@ export function pruneLearnSessionWord(
   delete acquisitionStates[word]
   delete hintStates[word]
 
-  if (words.length === 0) {
-    return {
-      ...record,
-      words,
-      index: 0,
-      isFinished: true,
-      exercisePlans:
-        Object.keys(exercisePlans).length > 0 ? exercisePlans : undefined,
-      reinforcementCounts:
-        Object.keys(reinforcementCounts).length > 0
-          ? reinforcementCounts
-          : undefined,
-      itemKinds:
-        Object.keys(itemKinds).length > 0 ? itemKinds : undefined,
-      itemStates:
-        Object.keys(itemStates).length > 0 ? itemStates : undefined,
-      acquisitionStates:
-        Object.keys(acquisitionStates).length > 0
-          ? acquisitionStates
-          : undefined,
-      hintStates:
-        Object.keys(hintStates).length > 0
-          ? hintStates
-          : undefined,
-    }
-  }
-
-  const nextLogicalIndex = Math.max(0, boundedIndex - removedBefore)
-  const isFinished = record.isFinished || nextLogicalIndex >= words.length
-  const index = isFinished
-    ? Math.max(0, words.length - 1)
-    : Math.min(nextLogicalIndex, words.length - 1)
-
-  return {
+  const pruned = {
     ...record,
-    words,
-    index,
-    isFinished,
+    ...(record.spacingWords ? {
+      spacingWords: record.spacingWords.filter((item) => item.name !== word),
+    } : {}),
+    ...(record.optionalNewWords ? {
+      optionalNewWords: record.optionalNewWords.filter((item) => item.name !== word),
+    } : {}),
     exercisePlans:
       Object.keys(exercisePlans).length > 0 ? exercisePlans : undefined,
     reinforcementCounts:
@@ -189,4 +164,18 @@ export function pruneLearnSessionWord(
         ? hintStates
         : undefined,
   }
+
+  // A candidate-only removal must not move or finish the current attempt.
+  if (!isQueued) return pruned
+  if (words.length === 0) {
+    return { ...pruned, words, index: 0, isFinished: true }
+  }
+
+  const nextLogicalIndex = Math.max(0, boundedIndex - removedBefore)
+  const isFinished = record.isFinished || nextLogicalIndex >= words.length
+  const index = isFinished
+    ? Math.max(0, words.length - 1)
+    : Math.min(nextLogicalIndex, words.length - 1)
+
+  return { ...pruned, words, index, isFinished }
 }
