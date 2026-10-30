@@ -6,6 +6,7 @@ executor: Codex-learn-exclusion
 claim_base_commit: f7899db7e2e745a9ae3dc92b5e9954490ee9dd0a
 target_branch: product/main
 release_to_master: false
+source_commit: 39b3e1a61083c43f107f9ded806399b5d1b6ed16
 ---
 # Removed Learn word returns later in the same round
 
@@ -49,4 +50,4 @@ Logs: /workspace/scratch/4c3b6e25c0cf/learn-exclude-before.log, learn-exclude-un
 
 ## Branches / next action
 
-Base f7899db7e2e745a9ae3dc92b5e9954490ee9dd0a. Only development main is authorized; no etest or master advance for this local scheduler fix. Focused verification is complete. Publish the five intended source/test/task/report files on current main; preserve incoming work and keep etest/master unchanged. Published Pages/CI after the push is separate from the local verification above and is not assumed to have passed.
+Base f7899db7e2e745a9ae3dc92b5e9954490ee9dd0a. Only development main is authorized; no etest or master advance for this local scheduler fix. Implementation commit 39b3e1a61083c43f107f9ded806399b5d1b6ed16 (tree 1050268778617f14f02f562bde445332cf4e5697) contains the five intended source/test/task/report files, based on unchanged current main. The follow-up checkpoint only records this identity. Only product/main is advanced; etest/master remain unchanged. Published Pages/CI after the push is separate from local verification above and is not assumed to have passed. No further broad cloud or workspace suite is needed unless a new failure or relevant change appears.
