@@ -1,3 +1,4 @@
+import { getDictionaryContent } from '@/utils/dictionaryContent'
 import DictionaryContent from '@/components/DictionaryContent'
 import MobilePracticeExample from './MobilePracticeExample'
 import MobilePhonetic from '@/pages/Mobile/MobilePhonetic'
@@ -662,6 +663,7 @@ export default function MobileWordPractice({
       <div
         className="mobile-practice-reading"
         data-mobile-reading
+        data-dictionary-reading={Boolean(getDictionaryContent(word)) || undefined}
         data-example-expanded={(!desktop && exampleExpanded) || undefined}
         onPointerDown={inspectReading}
         onScrollCapture={inspectReading}
@@ -828,6 +830,7 @@ export default function MobileWordPractice({
               <DictionaryContent
                 word={word}
                 meaningClassName="mobile-practice-meaning"
+                disabled={paused}
                 showDetails={Boolean(feedback) || task === 'exposure' || (task === 'recall' && Boolean(revealedAttempt))}
                 onInspect={holdReading}
               />

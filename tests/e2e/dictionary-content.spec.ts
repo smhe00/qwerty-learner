@@ -12,7 +12,7 @@ const words = ['ability', 'able', 'remember'].map(name => dictionary.find(word =
 async function open(page: Page, phase: 'exposure' | 'independent', dark: boolean) {
   await prepareVisibleUI(page, dark)
   await page.addInitScript(() => localStorage.setItem('learnInputMode', 'touch'))
-  await seedAcquisitionSession(page, words, 983710, phase)
+  await seedAcquisitionSession(page, words, 983710, phase, 4, 'unknown', {}, true)
   await page.goto(uiPath('/mobile/study'))
   const card = page.locator('[data-mobile-word-practice]')
   await expect(card).toBeVisible({ timeout: 30000 })
@@ -27,6 +27,14 @@ test('authoritative word content expands without hiding the primary action or ch
   await expect(card.locator('[data-dictionary-senses]')).toHaveText(words[0].content!.senses.map(entry => entry.text).join(''))
   const before = await readReviewModeInfo(page)
   const summary = card.locator('[data-dictionary-details] > summary')
+  console.log('dictionary geometry', await card.evaluate(element => {
+    const bounds = (selector: string) => {
+      const node = element.querySelector(selector)
+      return node ? JSON.stringify(node.getBoundingClientRect().toJSON()) : null
+    }
+    return { reading: bounds('[data-mobile-reading]'), meaning: bounds('[data-mobile-meaning-slot]'),
+      summary: bounds('[data-dictionary-details] > summary'), action: bounds('.mobile-practice-primary') }
+  }))
   await expect(summary).toBeInViewport({ ratio: 1 })
   const bounds = await summary.boundingBox()
   expect(bounds!.height).toBeGreaterThanOrEqual(44)
@@ -43,6 +51,11 @@ test('authoritative word content expands without hiding the primary action or ch
   await auditVisibleUI(page, info, 'dictionary-expanded')
   await page.screenshot({ path: info.outputPath('dictionary-expanded.png') })
   await summary.click()
+  await page.getByRole('button', { name: '暂停学习', exact: true }).click()
+  await expect(card.locator('[data-dictionary-content]')).toHaveAttribute('inert', '')
+  await auditVisibleUI(page, info, 'dictionary-paused')
+  await card.locator('[data-mobile-paused]').getByRole('button', { name: /继续学习/ }).click()
+  await expect(card.locator('[data-dictionary-content]')).not.toHaveAttribute('inert', '')
   await action.click()
   await expect(card.locator('[data-mobile-feedback]')).toBeVisible()
 })
@@ -73,7 +86,7 @@ test('long usage notes stay intact in the existing scroll panel', async ({ page 
   await prepareVisibleUI(page, info.project.name.endsWith('dark'))
   const remember = dictionary.find(word => word.name === 'remember')!
   await page.addInitScript(() => localStorage.setItem('learnInputMode', 'touch'))
-  await seedAcquisitionSession(page, [remember, words[0], words[1]], 983711, 'exposure')
+  await seedAcquisitionSession(page, [remember, words[0], words[1]], 983711, 'exposure', 4, 'unknown', {}, true)
   await page.goto(uiPath('/mobile/study'))
   const card = page.locator('[data-mobile-word-practice]')
   await expect(card).toHaveAttribute('data-mobile-word', 'remember', { timeout: 30000 })

@@ -219,6 +219,7 @@ export async function seedAcquisitionSession(
     string,
     'exposure' | 'guided' | 'supported' | 'independent'
   > = {},
+  oncePerTab = false,
 ) {
   await page.addInitScript(
     ({
@@ -228,7 +229,12 @@ export async function seedAcquisitionSession(
       seededIndependentInterveningItems,
       seededScaffoldStrainTier,
       seededPhaseOverrides,
+      seededOncePerTab,
     }) => {
+      // Opt-in for journeys that must exercise the saved checkpoint on reload.
+      const seedKey = 'qwerty:e2e:acquisition-session-seed:' + recordId
+      if (seededOncePerTab && sessionStorage.getItem(seedKey) === 'done') return
+      if (seededOncePerTab) sessionStorage.setItem(seedKey, 'done')
       const phaseData = (
         wordPhase: 'exposure' | 'guided' | 'supported' | 'independent',
       ) => {
@@ -383,6 +389,7 @@ export async function seedAcquisitionSession(
         independentInterveningItems,
       seededScaffoldStrainTier: scaffoldStrainTier,
       seededPhaseOverrides: phaseOverrides,
+      seededOncePerTab: oncePerTab,
     },
   )
 }

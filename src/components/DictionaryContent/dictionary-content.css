@@ -48,3 +48,14 @@
   padding-inline: 6px;
   overscroll-behavior: contain;
 }
+
+/* Short phones need the space occupied by an otherwise empty third example
+   line. Keep the three-line clamp and the fixed primary action unchanged. */
+@media (max-width: 600px) and (max-height: 630px) {
+  .mobile-practice-reading[data-dictionary-reading] .mobile-practice-example {
+    min-height: 0;
+  }
+  .mobile-practice-reading[data-dictionary-reading] .dictionary-content-details {
+    margin-top: 4px;
+  }
+}

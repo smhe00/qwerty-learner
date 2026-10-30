@@ -11,12 +11,14 @@ const labels = {
 export default function DictionaryContent({
   word,
   showDetails = false,
+  disabled = false,
   meaningClassName,
   meaningStyle,
   onInspect,
 }: {
   word: Word
   showDetails?: boolean
+  disabled?: boolean
   meaningClassName?: string
   meaningStyle?: CSSProperties
   onInspect?: () => void
@@ -25,7 +27,12 @@ export default function DictionaryContent({
   if (!content) return <p className={meaningClassName} style={meaningStyle}>{word.trans.join('；') || '暂无释义'}</p>
   const additional = dictionaryContentKinds.filter(kind => kind !== 'senses' && content[kind].length > 0)
   return (
-    <div className="dictionary-content" data-dictionary-content>
+    <div
+      className="dictionary-content"
+      data-dictionary-content
+      aria-hidden={disabled || undefined}
+      ref={node => { node?.toggleAttribute('inert', disabled) }}
+    >
       <p className={meaningClassName} style={meaningStyle} data-dictionary-senses>
         {content.senses.length ? content.senses.map(entry => (
           <span className="dictionary-content-sense" key={entry.sourceIndex}>{entry.text}</span>
