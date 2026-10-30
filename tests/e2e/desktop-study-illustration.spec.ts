@@ -46,6 +46,13 @@ for (const mode of ['keyboard', 'touch'] as const) {
     await expect(summary).toBeInViewport({ ratio: 1 })
     await summary.click()
     await expect(anchor.locator('[data-dictionary-group="collocations"] li')).toHaveText(words[0].content!.collocations.map(entry => entry.text))
+    if (mode === 'touch') {
+      // The touch card has a separate short scroller: prove its final source
+      // entry is reachable while the primary action remains in place.
+      const lastUsage = anchor.locator('[data-dictionary-group] li').last()
+      await lastUsage.scrollIntoViewIfNeeded()
+      await expect(lastUsage).toBeInViewport({ ratio: 1 })
+    }
     if (mode === 'touch') await expect(anchor.getByRole('button', { name: '继续学习', exact: true })).toBeInViewport({ ratio: 1 })
     await expect(image).toBeVisible()
     await auditVisibleUI(page, info, 'pc-image-expanded-' + mode)

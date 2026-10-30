@@ -2,7 +2,7 @@
 protocol_version: '1.1'
 task_id: 'PC-STUDY-IMAGES-20261031'
 title: 'PC Learn meaning illustration pilot'
-status: 'IN_PROGRESS'
+status: 'REVIEW'
 target_branch: 'product/main'
 base_commit: 'ebaa6f0c38b7299f20ee705f0e026971a2f16839'
 recommended_executor: 'Codex'
