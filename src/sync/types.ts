@@ -1,4 +1,5 @@
 export type CloudUser = {
+  role?: 'administrator'
   userId: string
   username: string
   createdAt: string

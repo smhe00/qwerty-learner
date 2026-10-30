@@ -107,7 +107,7 @@ const event = {
   mistakes: {},
 }
 const fullV4 = ''
-async function loginAgain({ rows = [], failure, v4Continue = true, adoption = 'skipped' } = {}) {
+async function loginAgain({ rows = [], failure, v4Continue = true, adoption = 'skipped', administrator = false } = {}) {
   const original = structuredClone(rows)
   const calls = []
   const session = new Map()
@@ -118,18 +118,25 @@ async function loginAgain({ rows = [], failure, v4Continue = true, adoption = 's
   }
   globalThis.document = { createElement: element }
   Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { onLine: true } })
-  let navigated
+  let navigated, destination
+  const oldFetch = globalThis.fetch
+  if (administrator) globalThis.fetch = async (path, options) => {
+    assert.equal(path, '/api/admin/access')
+    assert.equal(options.headers.Authorization, 'Bearer synthetic-admin')
+    calls.push('administrator-access')
+    return new Response(JSON.stringify({ ok: true, administrator: true }))
+  }
   const done = new Promise((resolve) => {
     navigated = resolve
   })
-  globalThis.window = { confirm: () => true, location: { pathname: '/', search: '', replace: navigated } }
+  globalThis.window = { setTimeout, clearTimeout, confirm: () => true, location: { pathname: '/', search: '', replace: path => { destination = path; navigated() } } }
   globalThis.localStorage = { getItem: (k) => (k === 'qwerty.s1.workspace-migrated.v1' ? 'v2' : null) }
   const state = (globalThis.__warning = {
     auth: null,
     registry: { generation: 1, pending: null, active: { kind: 'anonymous' } },
     async login() {
       calls.push('login')
-      return { user: { userId: 'synthetic', username: 'synthetic' }, token: 'synthetic', expiresAt: 9e9 }
+      return administrator ? { user: { userId: 'c'.repeat(32), username: 'admin', role: 'administrator' }, token: 'synthetic-admin', expiresAt: 9e9 } : { user: { userId: 'synthetic', username: 'synthetic' }, token: 'synthetic', expiresAt: 9e9 }
     },
     async switch(active, auth) {
       calls.push('switch')
@@ -184,6 +191,16 @@ async function loginAgain({ rows = [], failure, v4Continue = true, adoption = 's
     ])
   } finally {
     clearTimeout(timeout)
+    if (administrator) globalThis.fetch = oldFetch
+  }
+  if (administrator) {
+    assert.deepEqual(calls, ['login', 'administrator-access'])
+    assert.equal(destination, '/admin')
+    assert.equal(state.auth, null, 'ordinary credentials must not be replaced')
+    assert.deepEqual(state.registry.active, { kind: 'anonymous' })
+    assert.equal(JSON.parse(session.get('qwerty.administrator.session.v1')).user.role, 'administrator')
+    assert.deepEqual(rows, original)
+    return { calls }
   }
   assert.deepEqual(calls, ['login', 'switch'], 'account UI must not run a duplicate sync pipeline')
   try {
@@ -245,4 +262,8 @@ test('verified subset adoption stays quiet instead of claiming all-device conver
 test('staged V4 recovery does not enter event publication', async () => {
   const { calls } = await loginAgain({ v4Continue: false })
   assert.deepEqual(calls, ['login', 'switch', 'v4'])
+})
+
+test('admin entered through ordinary login diverts before workspace switching or any sync pipeline', async () => {
+  await loginAgain({ administrator: true, rows: [event] })
 })

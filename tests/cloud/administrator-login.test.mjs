@@ -265,3 +265,23 @@ test('name alone never grants privilege for admin or legacy smhe', () => {
   }
   assert.equal(administratorCredentials({}).matches({ userId: 'a'.repeat(32), normalizedUsername: 'smhe', status: 'active' }), false)
 })
+
+
+test('administrator cannot read or write learning through any service entry; ordinary sessions remain unchanged', async () => {
+  const { backend, store } = await fixture(new Store(), env, { eventPilotEnabled: true })
+  const admin = await backend.login('admin', password)
+  assert.equal(admin.user.role, 'administrator')
+  const before = structuredClone([...store.objects]), writes = store.writes
+  for (const method of ['syncMeta', 'getSync', 'putSync', 'putSyncV4', 'putSyncV4Recovery', 'putSyncV4Binary', 'putSyncV4BinaryRecovery',
+    'getSyncV4BinaryManifest', 'getSyncV4BinaryPart', 'migrateSyncV4Binary', 'publishLearningBatch', 'readLearningBatch',
+    'observeLearningBatchReceipts', 'publishChainedLearningBatch', 'issueChainedCheckout', 'readChainedCheckout',
+    'readChainedLearningBatch', 'verifyChainedLearningHistory', 'verifyWitnessedChainSet', 'observeChainedLearningReceipts'])
+    await assert.rejects(backend[method](admin.token, {}), { code: 'administrator_learning_forbidden' }, method)
+  assert.equal(store.writes, writes); assert.deepEqual([...store.objects], before)
+  const normal = await backend.register('learnerisolation', 'synthetic-ordinary-password')
+  assert.equal(normal.user.role, undefined)
+  assert.equal((await backend.syncMeta(normal.token)).revision, 0)
+  await assert.rejects(backend.revokeSession(normal.token, { administratorOnly: true }), { code: 'administrator_required' })
+  await backend.revokeSession(admin.token, { administratorOnly: true })
+  await assert.rejects(backend.me(admin.token), { code: 'session_revoked' })
+})

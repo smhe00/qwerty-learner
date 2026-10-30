@@ -21,7 +21,7 @@ if (process.env.REACT_APP_DEPLOY_ENV === 'pages') {
     throw new Error('Unexpected Vite root document; refusing to publish SPA route copies')
   }
   const routes = [
-    'typing', 'learn', 'analysis', 'gallery',
+    'admin', 'mobile/admin', 'typing', 'learn', 'analysis', 'gallery',
     'achievements', 'error-book', 'friend-links', 'mobile',
     'mobile/study', 'mobile/account', 'mobile/library', 'mobile/settings',
     'mobile/history', 'mobile/data', 'mobile/achievements', 'circles', 'mobile/circles',

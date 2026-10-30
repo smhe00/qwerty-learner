@@ -1,3 +1,5 @@
+import { administratorHint, administratorPath, rememberAdministratorSession } from '../admin/session'
+import { administrationRequest } from '../admin/client'
 /**
  * S1 account controls are deliberately PRE-MOUNT: the React/RecordDB writer
  * tree must not exist while switching IndexedDB and per-workspace settings.
@@ -149,8 +151,17 @@ export function renderS1AccountManagement(
     sessionStorage.removeItem('qwerty.etest.m4.idleBlocked')
     navigate()
   }
+  const enterAdministration = async (signed: CloudAuthState) => {
+    if (!administratorHint(signed)) return false
+    const access = await administrationRequest<{ administrator: boolean }>('/api/admin/access', { token: signed.token, anonymous: true })
+    if (access.administrator !== true) throw new Error('该账号未通过管理员权限核验。')
+    rememberAdministratorSession(signed)
+    window.location.replace(administratorPath())
+    return true
+  }
   const reauth = async () => {
     const signed = credential(await login(username.value.trim(), password.value, browserDeviceId()))
+    if (await enterAdministration(signed)) return
     await reauthenticateSameWorkspace(signed)
     finishAuthentication()
   }
@@ -159,6 +170,7 @@ export function renderS1AccountManagement(
       throw new Error('请输入用户名和至少四位密码')
     }
     const signed = credential(await login(username.value.trim(), password.value, browserDeviceId()))
+    if (await enterAdministration(signed)) return
     if (active.kind === 'account') {
       if (active.accountId !== signed.user.userId) {
         throw new Error('请先退出当前账号，再登录其他账号。')

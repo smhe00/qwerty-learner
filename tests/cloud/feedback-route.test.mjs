@@ -37,6 +37,12 @@ test('real gateway enforces live sessions and server admin role for private feed
     assert.equal(admin.status, 200)
     assert.equal(admin.data.user.username, 'admin')
     assert.equal((await call('/admin/access', { token: admin.data.token })).data.administrator, true)
+    assert.equal((await call('/admin/overview', { token: normal.data.token })).status, 403)
+    const overview = await call('/admin/overview', { token: admin.data.token })
+    assert.equal(overview.status, 200)
+    assert.ok(overview.data.rows.every(row => row.id !== admin.data.user.userId))
+    assert.equal((await call('/sync/meta', { token: admin.data.token })).status, 403)
+    assert.equal((await call('/sync/v2/parts', { token: admin.data.token, body: {} })).status, 403)
     const item = await call('/feedback', { token: normal.data.token, body: { operationId: '1'.repeat(32), title: '私密反馈', text: '问题描述' } })
     assert.equal(item.status, 200)
     const path = '/feedback/' + item.data.owner + '/' + item.data.id
@@ -47,6 +53,9 @@ test('real gateway enforces live sessions and server admin role for private feed
     assert.equal((await call(path, { token: normal.data.token })).data.status, 'resolved')
     assert.equal((await call('/feedback', { method: 'POST', raw: '{invalid-json' })).status, 400)
     assert.equal((await call('/feedback', { body: { text: 'x'.repeat(20000) } })).status, 413)
+    assert.equal((await call('/admin/logout', { token: normal.data.token, body: {} })).status, 403)
+    assert.equal((await call('/admin/logout', { token: admin.data.token, body: {} })).status, 200)
+    assert.equal((await call('/admin/overview', { token: admin.data.token })).status, 401)
     await call('/auth/login', { body: { username: 'feedbacktest', password: 'synthetic-password' } })
     assert.equal((await call(path, { token: normal.data.token })).status, 401)
   } finally { delete globalThis.__feedbackRouteStore }

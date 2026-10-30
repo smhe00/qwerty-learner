@@ -1,3 +1,4 @@
+import { createAdministratorOverview } from '../_shared/administrator-overview.js'
 import { createAccountDeletionReceipts } from '../_shared/account-deletion-receipts.js'
 import { isStartupSyncRead, withCircleBlobClients } from '../_shared/blob-clients.js'
 import { profileCircleRequest } from '../_shared/circle/profile.js'
@@ -267,6 +268,9 @@ async function requireS2WriteAccount(service, request, env) {
   if (!session?.user?.userId || typeof session.user.userId !== 'string') {
     throw new AppError(401, 'invalid_session', 'A valid account session is required')
   }
+  if (session.user.role === 'administrator') {
+    throw new AppError(403, 'administrator_learning_forbidden', 'Administrator accounts do not participate in learning synchronization')
+  }
   if (!isS2WriteEnabled(env.S2_SYNC_WRITES_DISABLED)) {
     throw new AppError(503, 's2_writes_temporarily_disabled',
       'Cloud V4 writes are temporarily unavailable')
@@ -487,6 +491,18 @@ async function onUncoordinatedRequest(context, receivedBody = null, nativeV4Body
       return json({ ok: true, administrator: administrator.isAdministrator({ ...user,
         normalizedUsername: user.username.toLowerCase(), status: 'active',
       }), policyEnabled: idle.configured }, 200, cors)
+    }
+    if (path === '/admin/logout' && request.method === 'POST') {
+      return json({ ok: true, ...(await service.revokeSession(bearer(request), { administratorOnly: true })) }, 200, cors)
+    }
+    if (path === '/admin/overview' && request.method === 'GET') {
+      const { user } = await service.me(bearer(request))
+      const result = await createAdministratorOverview({
+        store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }), administrator,
+      }).read(user, url.searchParams.get('cursor') || '')
+      // A revoked administrator cannot receive a completed sensitive scan.
+      await service.me(bearer(request))
+      return json({ ok: true, ...result }, 200, cors)
     }
     if (path === '/admin/storage' && request.method === 'GET') {
       const { user } = await service.me(bearer(request))

@@ -527,9 +527,18 @@ function createUncoordinatedBackendService({
     return { identity, currentAuth, currentSession }
   }
 
+  async function authenticateLearning(token) {
+    const authenticated = await authenticate(token)
+    if (credentials?.matches(authenticated.identity)) {
+      throw new AppError(403, 'administrator_learning_forbidden', 'Administrator accounts do not participate in learning synchronization')
+    }
+    return authenticated
+  }
+
   function publicUser(identity) {
     return {
       userId: identity.userId,
+      ...(credentials?.matches(identity) ? { role: 'administrator' } : {}),
       username: credentials?.publicUsername?.(identity) ?? identity.username,
       createdAt: identity.createdAt,
     }
@@ -705,11 +714,14 @@ function createUncoordinatedBackendService({
     return { user: publicUser(identity), ...session }
   }
 
-  async function revokeSession(token) {
-    if (!multiSessionEnabled) {
+  async function revokeSession(token, { administratorOnly = false } = {}) {
+    if (!multiSessionEnabled && !administratorOnly) {
       throw new AppError(404, 'not_found', 'Independent sessions are not enabled')
     }
     const { identity, currentSession } = await authenticate(token)
+    if (administratorOnly && !credentials?.matches(identity)) {
+      throw new AppError(403, 'administrator_required', 'Administrator access required')
+    }
     if (typeof storage.revokeSessionToken !== 'function' ||
         typeof storage.getSessionRevocation !== 'function') {
       throw new Error('Independent session revocation storage unavailable')
@@ -740,7 +752,7 @@ function createUncoordinatedBackendService({
 
   async function publishLearningBatch(token, input = {}) {
     requireEventPilot()
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     const record = validateImmutableEventBatch(input, identity.userId)
     const stored = await storage.putImmutableEventBatch(
       identity.userId, record.deviceId, record.batchId, record.sha256, record
@@ -765,7 +777,7 @@ function createUncoordinatedBackendService({
 
   async function readLearningBatch(token, selector = {}) {
     requireEventPilot()
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     if (!EVENT_DEVICE_ID.test(selector.deviceId) ||
         !EVENT_BATCH_UUID.test(selector.batchId) ||
         typeof selector.sha256 !== 'string' ||
@@ -796,7 +808,7 @@ function createUncoordinatedBackendService({
 
   async function observeLearningBatchReceipts(token) {
     requireEventPilot()
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     if (typeof storage.observeImmutableEventBatches !== 'function') {
       throw new Error('Event-batch receipt discovery unavailable')
     }
@@ -851,7 +863,7 @@ function createUncoordinatedBackendService({
 
   async function publishChainedLearningBatch(token, input = {}) {
     requireChainPilot()
-    const { identity, currentSession } = await authenticate(token)
+    const { identity, currentSession } = await authenticateLearning(token)
     const candidate = validateChainInput(input, identity.userId)
     if (currentSession.deviceId !== candidate.deviceId) {
       throw new AppError(403, 'event_device_mismatch',
@@ -902,7 +914,7 @@ function createUncoordinatedBackendService({
    */
   async function issueChainedCheckout(token, input = {}) {
     requireChainPilot()
-    const { identity, currentSession } = await authenticate(token)
+    const { identity, currentSession } = await authenticateLearning(token)
     return issueDeviceCheckoutDeclaration({
       accountId: identity.userId, deviceId: currentSession.deviceId,
     }, input, {
@@ -930,7 +942,7 @@ function createUncoordinatedBackendService({
 
   async function readChainedCheckout(token, selector = {}) {
     requireChainPilot()
-    const { identity, currentSession } = await authenticate(token)
+    const { identity, currentSession } = await authenticateLearning(token)
     return readDeviceCheckoutDeclaration({
       accountId: identity.userId, deviceId: currentSession.deviceId,
     }, selector, {
@@ -942,7 +954,7 @@ function createUncoordinatedBackendService({
 
   async function readChainedLearningBatch(token, selector = {}) {
     requireChainPilot()
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     if (!EVENT_DEVICE_ID.test(selector.deviceId) ||
         !EVENT_BATCH_UUID.test(selector.batchId) ||
         !EVENT_SHA.test(selector.sha256) ||
@@ -958,7 +970,7 @@ function createUncoordinatedBackendService({
 
   async function verifyChainedLearningHistory(token, selector = {}) {
     requireChainPilot()
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     if (!EVENT_DEVICE_ID.test(selector.deviceId) ||
         !EVENT_BATCH_UUID.test(selector.batchId) ||
         !EVENT_SHA.test(selector.sha256) ||
@@ -1022,7 +1034,7 @@ function createUncoordinatedBackendService({
    */
   async function verifyWitnessedChainSet(token, input = {}) {
     requireChainPilot()
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     if (!input || typeof input !== 'object' || Array.isArray(input) ||
         !Array.isArray(input.heads) || input.heads.length < 1 ||
         input.heads.length > 4) {
@@ -1054,7 +1066,7 @@ function createUncoordinatedBackendService({
       try {
         return await verifyHistoryPage({ accountId: identity.userId, heads, cursor: input.cursor, storage,
           read: current => verifiedChainReceipt(identity.userId, current),
-          assertOwner: async () => { await authenticate(token) },
+          assertOwner: async () => { await authenticateLearning(token) },
         })
       } catch (error) {
         if (['verification-checkpoint-invalid', 'verification-checkpoint-missing'].includes(error?.message)) {
@@ -1136,7 +1148,7 @@ function createUncoordinatedBackendService({
 
   async function observeChainedLearningReceipts(token) {
     requireChainPilot()
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     if (typeof storage.observeImmutableChainedBatches !== 'function') {
       throw new Error('Chained receipt observation unavailable')
     }
@@ -1242,7 +1254,7 @@ function createUncoordinatedBackendService({
   }
 
   async function syncMeta(token) {
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     const current = storage.getLatestRevisionMeta
       ? await storage.getLatestRevisionMeta(identity.userId)
       : await storage.getLatestRevision(identity.userId)
@@ -1250,7 +1262,7 @@ function createUncoordinatedBackendService({
   }
 
   async function getSync(token) {
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     const current = await storage.getLatestRevision(identity.userId)
 
     if (!current) {
@@ -1271,7 +1283,7 @@ function createUncoordinatedBackendService({
   }
 
   async function putSync(token, input = {}) {
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     const baseRevision = Number(input.baseRevision)
 
     if (!Number.isInteger(baseRevision) || baseRevision < 0) {
@@ -1352,7 +1364,7 @@ function createUncoordinatedBackendService({
    * submit V4. No implicit V3->V4 migration/overwrite is allowed.
    */
   async function putSyncV4(token, input = {}, recovery = false) {
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     // In pilot auth mode multiple valid writers share one V4 revision slot,
     // whose EdgeOne Blob onlyIfNew is NOT atomic. Fail closed until the M2/M3
     // append-only reconciliation protocol provides a no-loss commit path.
@@ -1474,7 +1486,7 @@ function createUncoordinatedBackendService({
    * validator, or persisted Blob. Old V4 data remains read compatible.
    */
   async function getSyncV4BinaryManifest(token) {
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     const latest = await storage.getLatestRevisionMeta(identity.userId)
     const snapshot = latest?.snapshot
     const layout = snapshot?.chunkedPayload
@@ -1491,7 +1503,7 @@ function createUncoordinatedBackendService({
   }
 
   async function getSyncV4BinaryPart(token, revision, sha, index) {
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     const latest = await storage.getLatestRevisionMeta(identity.userId)
     if (!latest || latest.revision !== revision ||
         latest.snapshot?.dataSha256 !== sha ||
@@ -1511,7 +1523,7 @@ function createUncoordinatedBackendService({
   }
 
   async function migrateSyncV4Binary(token, expected = {}) {
-    const { identity } = await authenticate(token)
+    const { identity } = await authenticateLearning(token)
     if (multiSessionEnabled) {
       throw new AppError(503, 'multi_device_merge_not_ready',
         'Binary format migration requires the same single-writer V4 safeguard')

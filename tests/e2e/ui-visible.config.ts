@@ -6,7 +6,7 @@ const port = process.env.QWERTY_TEST_PORT || '4207'
 const baseURL = 'http://127.0.0.1:' + port
 export default defineConfig({
   testDir: '.',
-  testMatch: ['ui-visible.spec.ts'],
+  testMatch: ['ui-visible.spec.ts', 'administrator-console.spec.ts'],
   fullyParallel: true,
   workers: 2,
   timeout: 180_000,

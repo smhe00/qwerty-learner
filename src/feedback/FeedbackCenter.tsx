@@ -20,11 +20,11 @@ import IconCopy from '~icons/tabler/copy'
 const date = (at: number) => new Date(at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 const errorText = (error: unknown) => (error instanceof Error ? error.message : '暂时无法完成，请稍后重试。')
 
-function Conversation({ identity }: { identity: Identity }) {
+export function Conversation({ identity, request = feedbackRequest, initialAll = false }: { identity: Identity; request?: typeof feedbackRequest; initialAll?: boolean }) {
   const [items, setItems] = useState<Item[]>([])
   const [cursor, setCursor] = useState('')
   const [administrator, setAdministrator] = useState(false)
-  const [all, setAll] = useState(false)
+  const [all, setAll] = useState(initialAll)
   const [thread, setThread] = useState<Thread | null>(null)
   const [creating, setCreating] = useState(false)
   const [title, setTitle] = useState('')
@@ -56,7 +56,7 @@ function Conversation({ identity }: { identity: Identity }) {
     }
   }
   async function listing(next = '', scope = all) {
-    const result = await feedbackRequest<{ items: Item[]; cursor: string; administrator: boolean }>(
+    const result = await request<{ items: Item[]; cursor: string; administrator: boolean }>(
       identity,
       '?scope=' + (scope ? 'all' : 'mine') + '&cursor=' + encodeURIComponent(next),
     )
@@ -66,7 +66,7 @@ function Conversation({ identity }: { identity: Identity }) {
     setAdministrator(result.administrator)
   }
   async function detail(item: Item) {
-    const result = await feedbackRequest<Thread>(identity, '/' + item.owner + '/' + item.id)
+    const result = await request<Thread>(identity, '/' + item.owner + '/' + item.id)
     if (!alive.current) return
     setThread(result)
     setStatus(result.status === 'waiting' ? 'handling' : result.status)
@@ -86,7 +86,7 @@ function Conversation({ identity }: { identity: Identity }) {
     setPending(operation)
     let result: Item
     try {
-      result = await feedbackRequest<Item>(identity, operation.path, operation.body)
+      result = await request<Item>(identity, operation.path, operation.body)
     } catch (error) {
       if (alive.current && error instanceof FeedbackRejectedError) {
         savePending(identity, null)
@@ -159,7 +159,7 @@ function Conversation({ identity }: { identity: Identity }) {
               刷新
             </button>
           )}
-          {!thread && !creating && (
+          {!initialAll && !thread && !creating && (
             <button
               className="feedback-primary"
               disabled={frozen}
@@ -175,7 +175,7 @@ function Conversation({ identity }: { identity: Identity }) {
           )}
         </div>
       </div>
-      {administrator && !thread && !creating && (
+      {!initialAll && administrator && !thread && !creating && (
         <button
           className="feedback-text-button"
           disabled={busy}

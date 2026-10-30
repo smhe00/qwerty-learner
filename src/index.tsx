@@ -1,3 +1,4 @@
+import { administratorHint, isAdministratorPath, readAdministratorSession } from './admin/session'
 /**
  * Sole real-app entry. No import of React/Jotai/RecordDB or domain modules
  * may precede the exclusive writer lease and pending-journal check.
@@ -226,6 +227,13 @@ async function start(): Promise<void> {
   starting = true
   try {
     await offerSecureLearningEntry(root)
+    // Admin is a separate application: no writer lease, RecordDB, store,
+    // workspace transition, learning startup sync or background publisher mounts.
+    if (isAdministratorPath() || readAdministratorSession() || administratorHint(loadAuth({ preserveExpired: true }))) {
+      const { mountAdministratorApplication } = await import('./admin/entry')
+      await mountAdministratorApplication(root)
+      return
+    }
     captureFeedbackRecoveryLink()
     if (isLearnCompletionHandoff()) {
       const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
