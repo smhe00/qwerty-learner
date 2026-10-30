@@ -74,8 +74,7 @@ export default function DesktopStudyIllustration({ word, dictId, visible }: {
         <img key={source} src={source} width={512} height={512} alt={word.name + ' 的场景插画'}
           loading="lazy" decoding="async" onError={() => setFailedSource(source)} />
         <figcaption>
-          插画：<a href="https://github.com/designfuchen/word-atlas" target="_blank" rel="noreferrer">Word Atlas contributors</a>
-          <span aria-hidden="true"> · </span>
+          <a href="https://github.com/designfuchen/word-atlas" target="_blank" rel="noreferrer">Word Atlas contributors</a>
           <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>
         </figcaption>
       </figure>, document.body,

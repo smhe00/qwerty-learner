@@ -44,7 +44,7 @@ for (const mode of ['keyboard', 'touch'] as const) {
     const before = await readReviewModeInfo(page)
     await auditVisibleUI(page, info, 'pc-image-' + mode)
     await page.screenshot({ path: info.outputPath('pc-image-' + mode + '.png') })
-    await page.getByRole('button', { name: '暂停学习', exact: true }).click()
+    await page.getByRole('button', { name: '暂停', exact: true }).click()
     await expect(image).toHaveCount(0)
     if (mode === 'keyboard') await page.getByRole('button', { name: /^(开始练习|继续练习)$/ }).click()
     else await page.locator('[data-mobile-paused]').getByRole('button', { name: /继续学习/ }).click()
@@ -76,11 +76,17 @@ test('mobile study never requests PC illustrations, including a desktop-sized wi
 
 test('a failed image removes its frame and leaves meaning and learning actions usable', async ({ page }, info) => {
   test.skip(!info.project.name.startsWith('desktop'), 'PC experiment')
-  await page.route('**/images/word-atlas/*.webp', route => route.fulfill({ status: 404, body: '' }))
+  const catalog = JSON.parse(readFileSync('src/resources/study-illustrations.json', 'utf8'))
+  const failedId = catalog.find((entry: { word: string }) => entry.word === 'ability').sourceId
+  await page.route('**/images/word-atlas/*.webp', route => route.request().url().includes(failedId)
+    ? route.fulfill({ status: 404, body: '' }) : route.continue())
   await open(page, info.project.name.endsWith('dark'), 'touch', 'exposure')
   await expect(page.locator(figure)).toHaveCount(0)
   const card = page.locator('[data-desktop-tap-practice]')
   await expect(card.locator('[data-dictionary-senses]')).toBeVisible()
   await card.getByRole('button', { name: '继续学习', exact: true }).click()
   await expect(card.locator('[data-mobile-feedback]')).toBeVisible()
+  await expect(card).toHaveAttribute('data-mobile-word', 'able')
+  await expect(page.locator(figure)).toHaveAttribute('data-illustration-word', 'able')
+  await expect.poll(() => page.locator(figure + ' img').evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(512)
 })
