@@ -8,6 +8,76 @@ import { readFileSync, readdirSync } from 'node:fs'
 
 test.beforeEach(async ({ page }, info) => prepareVisibleUI(page, info.project.name.endsWith('dark')))
 
+test('desktop toolbar keeps the same width and row when Learn starts and recovers after narrowing', async ({ page }, info) => {
+  test.skip(!info.project.name.startsWith('desktop'), 'Mouse desktop toolbar; touch uses its own study shell.')
+  await page.addInitScript(() => localStorage.setItem('currentDict', JSON.stringify('cet4')))
+  const apiRequests: string[] = []
+  if (pagesUI) page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url()) })
+  await page.setViewportSize({ width: 1536, height: 900 })
+  await page.goto(uiPath('/learn'))
+  const nav = page.locator('.focus-header-nav')
+  await expect(page.getByRole('button', { name: '开始 Learn', exact: true })).toBeEnabled()
+  await expect(nav).toHaveAttribute('data-toolbar-layout', 'single')
+  const geometry = () => nav.evaluate(node => ({
+    width: node.getBoundingClientRect().width,
+    rows: [...node.children].map(row => row.getBoundingClientRect().width),
+  }))
+  // Put the viewport just above the ACTUAL single-row threshold, measured
+  // with this browser's fonts. A phantom empty flex child used to add 8px
+  // only after starting Learn and push this otherwise identical menu down.
+  const threshold = await nav.evaluate(node => {
+    const header = node.parentElement!, outer = header.parentElement!
+    const style = getComputedStyle(node), layout = getComputedStyle(header), padding = getComputedStyle(outer)
+    const siblings = [...header.children].filter(child => child !== node)
+    return Math.ceil([...node.children].reduce((sum, row) => sum + row.getBoundingClientRect().width, 0) +
+      parseFloat(style.columnGap) * (node.children.length - 1) +
+      parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth) +
+      siblings.reduce((sum, sibling) => sum + sibling.getBoundingClientRect().width, 0) +
+      siblings.length * parseFloat(layout.columnGap) + parseFloat(padding.paddingLeft) + parseFloat(padding.paddingRight)) + 2
+  })
+  expect(threshold).toBeGreaterThanOrEqual(1280)
+  expect(threshold).toBeLessThanOrEqual(1536)
+  await page.setViewportSize({ width: threshold, height: 900 })
+  await expect(nav).toHaveAttribute('data-toolbar-layout', 'single')
+  const idle = await geometry()
+  await auditVisibleUI(page, info, 'toolbar-before-learning')
+  await page.getByRole('button', { name: '开始 Learn', exact: true }).click()
+  const word = page.locator('[data-typing-word]').first()
+  await expect(word).toHaveAttribute('data-typing-active', 'true')
+  await expect(nav).toHaveAttribute('data-toolbar-layout', 'single')
+  await expect.poll(geometry).toEqual(idle)
+  await auditVisibleUI(page, info, 'toolbar-during-learning')
+  const checkpoint = await page.evaluate(() => JSON.parse(localStorage.getItem('reviewModeInfo')!).reviewRecord)
+  await page.keyboard.press('Enter')
+  await expect(word).toHaveAttribute('data-typing-active', 'false')
+  expect(await geometry()).toEqual(idle)
+  await page.keyboard.press('Enter')
+  await expect(word).toHaveAttribute('data-typing-active', 'true')
+  await page.setViewportSize({ width: 1024, height: 600 })
+  await expect(nav).toHaveAttribute('data-toolbar-layout', 'stacked')
+  await auditVisibleUI(page, info, 'toolbar-narrow-window')
+  await page.setViewportSize({ width: threshold, height: 900 })
+  await expect(nav).toHaveAttribute('data-toolbar-layout', 'single')
+  expect(await geometry()).toEqual(idle)
+  await page.getByRole('button', { name: 'Typing', exact: true }).click()
+  await page.getByRole('button', { name: 'Learn', exact: true }).click()
+  // A deliberate mode switch returns to Learn's idle page; explicitly
+  // continue the saved session rather than assuming an automatic start.
+  await expect(page.getByRole('button', { name: '开始 Learn', exact: true })).toBeEnabled()
+  await expect(nav).toHaveAttribute('data-toolbar-layout', 'single')
+  expect(await geometry()).toEqual(idle)
+  await page.getByRole('button', { name: '开始 Learn', exact: true }).click()
+  await expect(word).toBeVisible()
+  await expect(nav).toHaveAttribute('data-toolbar-layout', 'single')
+  expect(await geometry()).toEqual(idle)
+  const restored = await page.evaluate(() => JSON.parse(localStorage.getItem('reviewModeInfo')!).reviewRecord)
+  expect(restored.id).toBe(checkpoint.id)
+  expect(restored.words).toEqual(checkpoint.words)
+  expect(restored.index).toBe(checkpoint.index)
+  await auditVisibleUI(page, info, 'toolbar-restored')
+  if (pagesUI) expect(apiRequests).toEqual([])
+})
+
 test('responsive layout returns to desktop after automatic narrowing and retains explicit touch routes', async ({ page }, info) => {
   const desktop = info.project.name.startsWith('desktop')
   const apiCalls: string[] = []

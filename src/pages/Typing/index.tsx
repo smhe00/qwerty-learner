@@ -429,16 +429,16 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
               <div className="focus-toolbar-icons-row" data-toolbar-row="icons">
                 <PronunciationSwitcher learnMode={isReviewMode} />
                 <Switcher learnMode={isReviewMode} />
-                <div className="flex shrink-0 items-center gap-3" data-typing-primary-controls>
-                  {!isLearnSurface && state.isShowSkip && (
+                {!isLearnSurface && state.isShowSkip && (
+                  <div className="flex shrink-0 items-center gap-3" data-typing-primary-controls>
                     <Tooltip content="跳过该词" className="shrink-0">
                       <button className="my-btn-primary w-20 shrink-0 whitespace-nowrap bg-orange-400"
                         type="button" onClick={skipWord}>
                         Skip
                       </button>
                     </Tooltip>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </Header>
             <div className="container mx-auto flex h-full flex-1 flex-col items-center justify-center pb-5">

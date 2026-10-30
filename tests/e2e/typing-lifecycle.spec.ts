@@ -487,6 +487,8 @@ test('Typing Skip never overlaps Start/Pause when it becomes visible', async ({
   await page.setViewportSize({ width: 1100, height: 800 })
   await page.goto('/typing')
   const currentWord = await waitForTypingWord(page)
+  const navigation = page.locator('.focus-header-nav')
+  const initialToolbarWidth = (await navigation.boundingBox())!.width
   await page.keyboard.press('a')
 
   const wrongKey = wrongKeyFor(currentWord)
@@ -520,6 +522,10 @@ test('Typing Skip never overlaps Start/Pause when it becomes visible', async ({
     skipBox.y < pauseBox.y + pauseBox.height &&
     skipBox.y + skipBox.height > pauseBox.y
   expect(overlaps).toBe(false)
+  await skip.click()
+  await expect(page.locator('[data-typing-word]').first()).not.toHaveAttribute('data-typing-word', currentWord)
+  await expect(skip).toHaveCount(0)
+  await expect.poll(async () => (await navigation.boundingBox())?.width).toBe(initialToolbarWidth)
 })
 
 
