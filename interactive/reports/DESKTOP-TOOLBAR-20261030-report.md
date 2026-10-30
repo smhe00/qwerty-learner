@@ -6,6 +6,7 @@ executor: Codex-desktop-toolbar
 claim_base_commit: e0850e326e6d89528fb607451029ade6f225324a
 target_branch: product/main
 release_to_master: false
+source_commit: feb9576432e46b23203ca24d621158137bba4fc8
 ---
 # Desktop menu changes from one row to two after starting Learn
 
@@ -51,3 +52,5 @@ The first fixed-source desktop run passed the layout/start/pause/resize assertio
 Supplementary local evidence: /workspace/scratch/4c3b6e25c0cf/toolbar-regression-before.log; toolbar-regression-fixed.log; toolbar-regression-final.log; toolbar-visible-artifacts.log; toolbar-typing.log; toolbar-fixed-build.log. Per-state JSON audits and screenshots are retained in toolbar-visible-artifacts and the existing CI report/artifact mechanism. Negative and intermediate failures remain in their separate output folders.
 
 Implementation is based on unchanged main e0850e326e6d89528fb607451029ade6f225324a. Publish only development main with these six files. Do not advance etest/master for this local presentation defect. Published Pages CI after push is separate from the observed local production-bundle verification above and is not assumed to have passed. No real cloud account, production customer state or physical iOS/HarmonyOS device was used. No broader Cloud/S1 suite is required absent a new concrete failure or source change.
+
+Implementation checkpoint: feb9576432e46b23203ca24d621158137bba4fc8 (tree 942a3498bdb1af71f7c53443b2c77c703c16c2c4). The follow-up documentation commit only records this identity. Only product/main is updated; etest/master remain pinned. The remote implementation tree is checked against the exact locally staged tree before publication.
