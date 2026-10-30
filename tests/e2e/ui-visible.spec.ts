@@ -47,6 +47,15 @@ test('responsive layout returns to desktop after automatic narrowing and retains
     await page.goto(uiPath('/'))
     await expect(page.locator('[data-mobile-menu]')).toBeVisible({ timeout: 30_000 })
     await expect(page).toHaveURL(/\/mobile$/)
+    expect(await page.evaluate(() => history.state?.usr?.responsiveDesktopLocation ?? null)).toBeNull()
+    // Attaching a mouse must not reclassify an already chosen tablet home as
+    // a temporary PC-width fallback. Exercise a real input media change.
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false })
+    await expect.poll(() => page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(false)
+    await page.setViewportSize({ width: 1440, height: 901 })
+    await expect(page).toHaveURL(/\/mobile$/)
+    await expect(page.locator('[data-mobile-menu]')).toBeVisible()
   } else expect(await page.evaluate(() => performance.timeOrigin)).toBe(origin)
   await auditVisibleUI(page, info, 'responsive-explicit-touch')
   expect(apiCalls).toEqual([])

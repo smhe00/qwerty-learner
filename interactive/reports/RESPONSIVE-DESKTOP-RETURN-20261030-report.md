@@ -27,6 +27,14 @@ The existing six-profile production visible-UI gate now exercises the regression
 
 Pre-publication fetch found main advanced to b69a6847 (Admin acceptance/task documentation only). Fast-forwarded the isolated worktree; all upstream files are retained. The tested application source is unchanged by that integration.
 
+## Primary-touch follow-up
+
+Initial implementation published as 0d4d336bb396b59158824d5190faaf1b0131b6ed. Final review narrowed the marker to **mouse-first width fallback only**. A phone/tablet automatically selecting touch home gets no desktop-return marker, so attaching a mouse later still preserves its menu. The regression now asserts no marker and uses Chromium's actual touch-emulation media change to exercise coarse→fine input, followed by a wide resize. Intentional mobile study remains unchanged.
+
+Final Pages production build/CSS ownership PASS (29.88 s / 31.34 s). Final six-profile run: 5 passed; tablet-dark stalled at the ordinary pre-mount preparation screen on a document navigation before the new input/resize action (30-second admission wait). Preserved its original screenshot/trace under `/tmp/qwerty-responsive-final-initial-evidence`. The unchanged targeted tablet-dark rerun passed, 3.3 s journey / 5.1 s suite, zero runner retries. All six distinct profiles therefore completed the final assertions; this is not represented as an initially clean six-case run. Final exact-source CI remains required. No product boot/lease guard, test state or assertion was weakened for the rerun.
+
+The two desktop themes were also run with responsive screenshots retained (2 passed / 19.7 s). Manually reviewed restored desktop-light and narrow mobile-dark: expected controls/text are readable and unobstructed. Axe incompletes concern the pre-existing paragraph background overlapping inline content in the Typing landing page, not a confirmed violation. Every audited state has zero confirmed axe violations and zero geometry/touch obstruction findings.
+
 ## Boundaries / handoff
 
 Independent authorized UI task. CURRENT_TASK and Circle/Admin reports/source remain untouched. Only product/main/Pages is published; no etest/master change. Physical devices and cloud behavior are not certified by these UI checks.

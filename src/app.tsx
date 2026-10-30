@@ -29,11 +29,11 @@ const MOBILE_LAYOUT_BREAKPOINT = 700
 // not the UA or the mere presence of a touchscreen on a mouse-first laptop.
 const TOUCH_POINTER_QUERY = '(pointer: coarse)'
 const NO_HOVER_QUERY = '(hover: none)'
+function hasPrimaryTouchInput() {
+  return typeof window.matchMedia === 'function' && window.matchMedia(TOUCH_POINTER_QUERY).matches && window.matchMedia(NO_HOVER_QUERY).matches
+}
 function prefersTouchLayout() {
-  return (
-    window.innerWidth <= MOBILE_LAYOUT_BREAKPOINT ||
-    (typeof window.matchMedia === 'function' && window.matchMedia(TOUCH_POINTER_QUERY).matches && window.matchMedia(NO_HOVER_QUERY).matches)
-  )
+  return window.innerWidth <= MOBILE_LAYOUT_BREAKPOINT || hasPrimaryTouchInput()
 }
 
 const loadAnalysisPage = () => import('./pages/Analysis')
@@ -182,7 +182,10 @@ function ResponsiveRoutes({ isMobile }: { isMobile: boolean }) {
     <Routes>
       <Route path="/mobile" element={<MobilePage />} />
       <Route path="/achievements" element={<MobileAchievementsRoute />} />
-      <Route path="/*" element={<Navigate to="/mobile" state={{ responsiveDesktopLocation: location }} replace />} />
+      <Route
+        path="/*"
+        element={<Navigate to="/mobile" state={hasPrimaryTouchInput() ? undefined : { responsiveDesktopLocation: location }} replace />}
+      />
     </Routes>
   ) : (
     <DesktopRoutes />
