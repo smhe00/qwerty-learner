@@ -26,7 +26,7 @@ test('every original source line occurs exactly once in the structured content',
     assert.equal(entries.length, word.trans.length, index + ': source count')
     assert.deepEqual([...entries].sort((a, b) => a.sourceIndex - b.sourceIndex).map(entry => entry.text), word.trans)
     assert.deepEqual(word.content, createDictionaryContent(word.trans), index + ': deterministic classification')
-    assert.ok(word.content.senses.length > 0)
+    assert.ok(word.content.senses.length > 0 || word.shortMeaning?.trim())
   }
 })
 
@@ -71,4 +71,14 @@ test('unrevealed meaning cannot contain collocations, word-family answers or usa
     assert.ok(word.content.notes.length || word.content.collocations.length)
     assert.ok(getDictionaryMeaning(word).length < word.trans.join('；').length)
   }
+})
+
+test('a source entry containing only a phrase uses its existing shortMeaning, never an invented definition', () => {
+  const dream = words.find(word => word.name === 'dream')
+  assert.deepEqual(dream.trans, ['词组 dream of梦想；想到'])
+  assert.deepEqual(dream.content.senses, [])
+  assert.ok(getDictionaryContent(dream))
+  assert.equal(getDictionaryMeaning(dream), dream.shortMeaning)
+  assert.equal(getDictionaryMeaning(dream), '梦想')
+  assert.equal(getDictionaryContent({ ...dream, shortMeaning: undefined }), null)
 })

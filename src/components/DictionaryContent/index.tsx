@@ -1,6 +1,6 @@
 import './dictionary-content.css'
 import type { Word } from '@/typings'
-import { dictionaryContentKinds, getDictionaryContent } from '@/utils/dictionaryContent'
+import { dictionaryContentKinds, getDictionaryContent, getDictionaryMeaning } from '@/utils/dictionaryContent'
 import type { CSSProperties } from 'react'
 
 const labels = {
@@ -27,9 +27,9 @@ export default function DictionaryContent({
   return (
     <div className="dictionary-content" data-dictionary-content>
       <p className={meaningClassName} style={meaningStyle} data-dictionary-senses>
-        {content.senses.map(entry => (
+        {content.senses.length ? content.senses.map(entry => (
           <span className="dictionary-content-sense" key={entry.sourceIndex}>{entry.text}</span>
-        ))}
+        )) : getDictionaryMeaning(word)}
       </p>
       {showDetails && additional.length > 0 && (
         <details

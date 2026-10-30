@@ -24,7 +24,7 @@ export function createDictionaryContent(trans: readonly string[]): DictionaryCon
 }
 
 /** Reject stale or partial metadata as a whole, retaining the legacy full text. */
-export function getDictionaryContent(word: Pick<Word, 'trans' | 'content'>): DictionaryContent | null {
+export function getDictionaryContent(word: Pick<Word, 'trans' | 'content' | 'shortMeaning'>): DictionaryContent | null {
   const content = word.content
   if (!content || content.version !== 1 || !Array.isArray(word.trans)) return null
   const seen = new Set<number>()
@@ -37,11 +37,12 @@ export function getDictionaryContent(word: Pick<Word, 'trans' | 'content'>): Dic
       seen.add(entry.sourceIndex)
     }
   }
-  if (!content.senses.length || seen.size !== word.trans.length) return null
+  if (seen.size !== word.trans.length) return null
+  if (!content.senses.length && !(typeof word.shortMeaning === 'string' && word.shortMeaning.trim())) return null
   return content
 }
 
-export function getDictionaryMeaning(word: Pick<Word, 'trans' | 'content'>): string {
+export function getDictionaryMeaning(word: Pick<Word, 'trans' | 'content' | 'shortMeaning'>): string {
   const content = getDictionaryContent(word)
-  return content ? content.senses.map(entry => entry.text).join('；') : word.trans.join('；')
+  return content ? (content.senses.length ? content.senses.map(entry => entry.text).join('；') : word.shortMeaning!) : word.trans.join('；')
 }

@@ -15,3 +15,5 @@ New coverage checks original Git blob identity after projection, one-to-one sour
 Exact source SHA, PR, CI run URLs and results will be recorded after validation. Real iOS/HarmonyOS and manual screenshot review remain untested while the execution environment is unavailable.
 
 Remote iteration 1: UI workflow 41088428549 stopped before tests because the esbuild test harness inherited the application's ES5 target. Added an explicit node20 target to the Node-only verification/generator bundles; product compilation settings are unchanged. No source-content mutation was reported.
+
+Remote iteration 2: original Git blob identity passed. Exhaustive coverage found dream has only one original collocation and no standalone trans definition. Preserve that exact source line under collocations and use its ALREADY EXISTING shortMeaning=梦想 as the core cue. Added an explicit edge-case regression; no source definition is invented, moved or rewritten. All other 2871 entries have source definition lines.
