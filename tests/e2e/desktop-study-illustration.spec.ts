@@ -35,12 +35,15 @@ for (const mode of ['keyboard', 'touch'] as const) {
     await expect(image).toBeVisible()
     await expect(image).toHaveAttribute('data-illustration-word', 'ability')
     await expect.poll(() => image.locator('img').evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(512)
-    await expect(image.getByRole('link', { name: 'Word Atlas contributors' })).toBeVisible()
+    await expect(image.locator('figcaption')).toHaveCount(0)
+    await expect(image.getByRole('link')).toHaveCount(0)
     const anchor = page.locator(mode === 'keyboard' ? '.focus-word-stack' : '[data-desktop-tap-practice]')
     const a = (await anchor.boundingBox())!
     const b = (await image.boundingBox())!
-    expect(b.x - a.x - a.width).toBeGreaterThanOrEqual(24)
-    expect(b.x + b.width).toBeLessThanOrEqual(1440 - 24)
+    expect(a.x - b.x - b.width).toBeGreaterThanOrEqual(24)
+    expect(b.x).toBeGreaterThanOrEqual(32)
+    const token = (await anchor.locator(mode === 'keyboard' ? '[data-typing-word]' : '.mobile-practice-word').boundingBox())!
+    expect(Math.abs(b.y - token.y)).toBeLessThanOrEqual(1)
     const before = await readReviewModeInfo(page)
     const summary = anchor.locator('[data-dictionary-details] > summary')
     await expect(summary).toBeInViewport({ ratio: 1 })
@@ -58,6 +61,7 @@ for (const mode of ['keyboard', 'touch'] as const) {
     await auditVisibleUI(page, info, 'pc-image-expanded-' + mode)
     await page.screenshot({ path: info.outputPath('pc-image-expanded-' + mode + '.png') })
     await summary.click()
+    if (mode === 'touch') await anchor.locator('[data-mobile-definition-scroll]').evaluate(node => { node.scrollTop = 0 })
     await auditVisibleUI(page, info, 'pc-image-' + mode)
     await page.screenshot({ path: info.outputPath('pc-image-' + mode + '.png') })
     await page.getByRole('button', { name: '暂停', exact: true }).click()
@@ -70,6 +74,19 @@ for (const mode of ['keyboard', 'touch'] as const) {
     await page.setViewportSize({ width: 1440, height: 900 })
     await expect(image).toBeVisible()
     expect(await readReviewModeInfo(page)).toEqual(before)
+    await page.getByRole('button', { name: '暂停', exact: true }).click()
+    await page.getByRole('button', { name: '开源 · GPL-3.0', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '关于 Qwerty Plus', exact: true })
+    const attribution = dialog.locator('[data-word-atlas-attribution]')
+    await expect(attribution).toContainText('Word Atlas contributors')
+    await expect(attribution.getByRole('link', { name: 'Word Atlas 项目' })).toHaveAttribute('href', 'https://github.com/designfuchen/word-atlas')
+    await expect(attribution.getByRole('link', { name: 'CC BY 4.0 许可' })).toHaveAttribute('href', 'https://creativecommons.org/licenses/by/4.0/')
+    for (const link of await attribution.getByRole('link').all()) {
+      await expect(link).toBeInViewport({ ratio: 1 })
+      expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    }
+    await auditVisibleUI(page, info, 'pc-image-credits-' + mode)
+    await dialog.getByRole('button', { name: '关闭', exact: true }).click()
   })
 
   test('PC ' + mode + ' cold recall does not request an answer image', async ({ page }, info) => {

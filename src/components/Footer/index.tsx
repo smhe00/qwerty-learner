@@ -78,6 +78,16 @@ const Footer: React.FC = () => {
             <a href="https://github.com/smhe00/qwerty-learner" target="_blank" rel="noreferrer" className="hover:underline">完整源码</a>
             <a href="https://github.com/smhe00/qwerty-learner/blob/master/LICENSE" target="_blank" rel="noreferrer" className="hover:underline">GPL-3.0 协议</a>
           </div>
+          <section className="border-t border-slate-200 pt-3 dark:border-slate-700" data-word-atlas-attribution>
+            <h4 className="font-semibold text-slate-800 dark:text-slate-100">学习插画</h4>
+            <p>插画来自 Word Atlas，署名 Word Atlas contributors。图片原样使用，采用 CC BY 4.0 许可。</p>
+            <div className="flex flex-wrap gap-x-4 text-indigo-600 dark:text-indigo-300">
+              <a href="https://github.com/designfuchen/word-atlas" target="_blank" rel="noreferrer"
+                className="inline-flex min-h-[44px] items-center hover:underline">Word Atlas 项目</a>
+              <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer"
+                className="inline-flex min-h-[44px] items-center hover:underline">CC BY 4.0 许可</a>
+            </div>
+          </section>
         </div>
       </InfoPanel>
 

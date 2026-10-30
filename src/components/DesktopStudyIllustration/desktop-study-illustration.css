@@ -2,8 +2,6 @@
   position: fixed;
   z-index: 2;
   margin: 0;
-  color: var(--focus-text-secondary);
-  pointer-events: auto;
 }
 .desktop-study-illustration img {
   display: block;
@@ -15,23 +13,6 @@
   border-radius: 14px;
   background: #f2ead7;
 }
-.desktop-study-illustration figcaption {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 9px 2px 0;
-  font-size: 11px;
-  line-height: 1.7;
-  text-align: center;
-}
-.desktop-study-illustration a {
-  display: inline-flex;
-  min-height: 24px;
-  align-items: center;
-  color: inherit;
-  text-underline-offset: 3px;
-}
-.desktop-study-illustration a:focus-visible { outline: 2px solid var(--focus-accent); outline-offset: 3px; }
 @media (max-width: 1199px), (max-height: 649px) {
   .desktop-study-illustration { display: none; }
 }

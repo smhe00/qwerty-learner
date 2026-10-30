@@ -31,14 +31,15 @@ export default function DesktopStudyIllustration({ word, dictId, visible }: {
     const measure = () => {
       const box = anchor.getBoundingClientRect()
       const width = Math.min(208, Math.max(160, window.innerWidth * .15))
-      const left = box.right + 36
+      const left = box.left - 36 - width
       // At zoom/narrow widths retain the existing unaltered text layout.
       if (window.innerWidth < 1200 || window.innerHeight < 650 ||
-        box.width === 0 || left + width > window.innerWidth - 32) {
+        box.width === 0 || left < 32) {
         setPlacement(null)
         return
       }
-      const top = Math.max(120, Math.min(window.innerHeight - width - 112, (box.top + box.bottom - width - 30) / 2))
+      const token = anchor.querySelector<HTMLElement>('[data-typing-word], .mobile-practice-word, .mobile-practice-revealed-word')
+      const top = Math.max(120, Math.min(window.innerHeight - width - 112, token?.getBoundingClientRect().top ?? box.top))
       setPlacement(old => old?.source === source && old.left === left && old.top === top && old.width === width
         ? old : { source, left, top, width })
     }
@@ -68,15 +69,9 @@ export default function DesktopStudyIllustration({ word, dictId, visible }: {
         data-desktop-study-illustration
         data-illustration-word={word.name}
         style={{ left: placement.left, top: placement.top, width: placement.width }}
-        onKeyDown={event => event.stopPropagation()}
-        onKeyUp={event => event.stopPropagation()}
       >
         <img key={source} src={source} width={512} height={512} alt={word.name + ' 的场景插画'}
           loading="lazy" decoding="async" onError={() => setFailedSource(source)} />
-        <figcaption>
-          <a href="https://github.com/designfuchen/word-atlas" target="_blank" rel="noreferrer">Word Atlas contributors</a>
-          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>
-        </figcaption>
       </figure>, document.body,
     )}
   </>
