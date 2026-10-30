@@ -98,3 +98,31 @@ test('long usage notes stay intact in the existing scroll panel', async ({ page 
   await auditVisibleUI(page, info, 'dictionary-long-notes')
   await page.screenshot({ path: info.outputPath('dictionary-long-notes.png') })
 })
+
+for (const phase of ['exposure', 'independent'] as const) {
+  test('desktop keyboard ' + phase + ' respects the same content visibility boundary', async ({ page }, info) => {
+    test.skip(!info.project.name.startsWith('desktop'), 'The keyboard layout is a desktop surface')
+    await prepareVisibleUI(page, info.project.name.endsWith('dark'))
+    await page.addInitScript(() => localStorage.setItem('learnInputMode', 'keyboard'))
+    await seedAcquisitionSession(page, words, phase === 'exposure' ? 983712 : 983713, phase, 4, 'unknown', {}, true)
+    await page.goto(uiPath('/learn'))
+    const start = page.getByRole('button', { name: /^(开始练习|继续练习)$/ })
+    await expect(start).toBeVisible({ timeout: 30000 })
+    await start.click()
+    const stack = page.locator('.focus-word-stack')
+    if (phase === 'independent') {
+      await expect(stack.locator('[data-dictionary-content]')).toHaveCount(0)
+      await expect(stack.locator('[data-dictionary-details]')).toHaveCount(0)
+    } else {
+      await expect(stack.locator('[data-dictionary-senses]')).toHaveText(words[0].content!.senses.map(entry => entry.text).join(''))
+      const before = await readReviewModeInfo(page)
+      const summary = stack.locator('[data-dictionary-details] > summary')
+      await expect(summary).toBeInViewport({ ratio: 1 })
+      await summary.click()
+      await expect(stack.locator('[data-dictionary-group="collocations"] li')).toHaveText(words[0].content!.collocations.map(entry => entry.text))
+      expect(await readReviewModeInfo(page)).toEqual(before)
+    }
+    await auditVisibleUI(page, info, 'dictionary-keyboard-' + phase)
+    await page.screenshot({ path: info.outputPath('dictionary-keyboard-' + phase + '.png') })
+  })
+}
