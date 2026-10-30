@@ -1,3 +1,4 @@
+import DictionaryContent from '@/components/DictionaryContent'
 import MobilePracticeExample from './MobilePracticeExample'
 import MobilePhonetic from '@/pages/Mobile/MobilePhonetic'
 import type { WordFinishResult } from '@/learn/word-completion'
@@ -223,7 +224,6 @@ export default function MobileWordPractice({
 
   const example = useMemo(() => getFirstValidDictionaryExample(word), [word])
   const maskedExample = useMemo(() => (example ? maskDictionaryExample(example) : null), [example])
-  const meanings = word.trans?.filter(Boolean).join('；') || '暂无释义'
   const exampleFontSize = !desktop
     ? 'clamp(14px, 3.8vw, 17px)'
     : example && example.en.length > 205
@@ -825,7 +825,12 @@ export default function MobileWordPractice({
         <div className="mobile-practice-meaning-slot" data-mobile-meaning-slot>
           <div className="mobile-practice-definition-scroll" data-mobile-definition-scroll>
             {(feedback || task === 'exposure' || task === 'recall' || task === 'spelling') && (
-              <p className="mobile-practice-meaning">{meanings}</p>
+              <DictionaryContent
+                word={word}
+                meaningClassName="mobile-practice-meaning"
+                showDetails={Boolean(feedback) || task === 'exposure' || (task === 'recall' && Boolean(revealedAttempt))}
+                onInspect={holdReading}
+              />
             )}
             {(feedback || task === 'exposure' || (task === 'recall' && Boolean(revealedAttempt))) && example?.cn && (
               <p className="mobile-practice-example-cn" data-mobile-example-cn>

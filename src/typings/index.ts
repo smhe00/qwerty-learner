@@ -26,9 +26,29 @@ export type DictionaryExample = {
   end: number
 }
 
+export type DictionaryContentEntry = {
+  /** Index into the unchanged authoritative trans array. */
+  sourceIndex: number
+  /** Exact source text, including original punctuation and labels. */
+  text: string
+}
+
+export type DictionaryContent = {
+  version: 1
+  senses: DictionaryContentEntry[]
+  collocations: DictionaryContentEntry[]
+  relatedWords: DictionaryContentEntry[]
+  synonyms: DictionaryContentEntry[]
+  antonyms: DictionaryContentEntry[]
+  notes: DictionaryContentEntry[]
+  extra: DictionaryContentEntry[]
+}
+
 export type Word = {
   name: string
   trans: string[]
+  /** Optional lossless presentation of the original trans entries. */
+  content?: DictionaryContent
   // Curated concise meaning; missing/empty values have no usable short gloss.
   shortMeaning?: string
   usphone: string

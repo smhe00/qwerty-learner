@@ -1,0 +1,50 @@
+.dictionary-content {
+  min-width: 0;
+  width: 100%;
+  color: var(--focus-text);
+  overflow-wrap: anywhere;
+}
+.dictionary-content-sense { display: block; }
+.dictionary-content-details {
+  margin-top: 12px;
+  border-top: 1px solid var(--focus-border);
+  text-align: left;
+}
+.dictionary-content-details > summary {
+  display: list-item;
+  min-height: 44px;
+  padding: 11px 4px;
+  color: var(--focus-text-secondary);
+  font-size: 14px;
+  line-height: 22px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.dictionary-content-details > summary:focus-visible {
+  outline: 2px solid var(--focus-accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+.dictionary-content-groups { display: grid; gap: 14px; padding: 0 4px 12px; }
+.dictionary-content-group h3 {
+  margin: 0 0 5px;
+  color: var(--focus-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.dictionary-content-group ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dictionary-content-group li { font-size: 14px; line-height: 1.75; white-space: pre-wrap; }
+.focus-translation > .dictionary-content {
+  max-width: 56rem;
+  max-height: min(34vh, 300px);
+  overflow-y: auto;
+  padding-inline: 6px;
+  overscroll-behavior: contain;
+}

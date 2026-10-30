@@ -27,6 +27,12 @@ jobs:
           node-version: '20.18.0'
           cache: yarn
       - run: yarn install --frozen-lockfile
+      - name: Validate lossless dictionary content and regeneration
+        run: |
+          node --test tests/dictionary/*.test.mjs
+          node scripts/structure-shanghai-dictionary.mjs
+      - name: Lint dictionary presentation
+        run: yarn eslint src/components/DictionaryContent src/utils/dictionaryContent.ts src/typings/index.ts src/pages/Typing/components/WordPanel/components/Translation/index.tsx src/pages/Typing/components/WordList/WordCard.tsx --ext .ts,.tsx
       - name: Install Chromium and Chinese fonts
         run: |
           npx playwright install --with-deps chromium

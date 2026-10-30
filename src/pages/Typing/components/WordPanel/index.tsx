@@ -287,6 +287,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
               index,
               name: word.name,
               trans: [...word.trans],
+              ...(word.content !== undefined ? { content: word.content } : {}),
               ...(word.shortMeaning !== undefined ? { shortMeaning: word.shortMeaning } : {}),
               usphone: word.usphone,
               ukphone: word.ukphone,
@@ -890,6 +891,8 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
               {effectivePhoneticVisible && <Phonetic word={currentWord} />}
               <Translation
                 trans={currentWord.trans.join('；')}
+                word={isReviewMode ? currentWord : undefined}
+                showDetails={isVisibleCopyAttempt || (currentReviewHintLevel !== null && currentReviewHintLevel >= 3)}
                 showTrans={effectiveTranslationVisible}
                 onMouseEnter={() => handleShowTranslation(true)}
                 onMouseLeave={() => handleShowTranslation(false)}
