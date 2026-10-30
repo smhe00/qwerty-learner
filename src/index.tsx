@@ -630,12 +630,29 @@ async function start(): Promise<void> {
       }
     } else {
       gateUI('学习数据安全检查未通过', '已阻止本页写入，现有学习数据不会因此被清空。原因：' + message, '重新检查')
-      if (isAdministratorReturn() && root) {
+      // Old affected profiles reopen their ordinary URL without admin-return.
+      // Offer a navigation exit from that error too; authentication, consent,
+      // journal recovery and all S1 write guards remain on the existing path.
+      if (
+        root &&
+        REACT_APP_DEPLOY_ENV !== 'pages' &&
+        import.meta.env.VITE_QWERTY_SYNC_DISABLED !== 'true' &&
+        (isAdministratorReturn() ||
+          (message.startsWith('S1 workspace storage witness mismatch:') && localStorage.getItem('qwerty.cloudAuth.v1') === null))
+      ) {
+        const help = document.createElement('p')
+        help.textContent = '若刚从管理员切回普通账号，请先使用 admin 登录恢复。恢复前会确认并保存完整本机副本。'
+        help.style.cssText = 'margin-bottom:12px'
         const link = document.createElement('a')
         link.href = window.location.pathname.includes('/mobile') ? '/mobile/admin' : '/admin'
-        link.textContent = '使用 admin 登录后恢复返回普通账号'
-        link.style.cssText = 'display:block;margin-top:16px;text-decoration:underline;min-height:44px'
-        root.querySelector('section')?.append(link)
+        link.textContent = '管理员切换恢复'
+        link.style.cssText =
+          'display:inline-flex;align-items:center;min-height:44px;margin-bottom:16px;padding:8px 16px;border:1px solid #3d587f;border-radius:9px;background:#3d587f;color:white'
+        const heading = root.querySelector<HTMLElement>('section h1')
+        if (heading) {
+          heading.style.fontSize = '20px'
+          heading.after(help, link)
+        }
       }
     }
   } finally {

@@ -1,7 +1,7 @@
-import { seedSealedLegacyAdministrator, inspectReturnedWorkspace } from './administrator-workspace-fixture'
-import { uiPath, pagesUI } from './ui-test-path'
+import { inspectReturnedWorkspace, seedSealedLegacyAdministrator } from './administrator-workspace-fixture'
+import { pagesUI, uiPath } from './ui-test-path'
 import { auditVisibleUI, prepareVisibleUI } from './ui-visible-audit'
-import { expect, test, type Page } from '@playwright/test'
+import { type Page, expect, test } from '@playwright/test'
 
 const adminId = 'c'.repeat(32),
   studentId = 'a'.repeat(32)
@@ -275,6 +275,50 @@ test('administrator sealed anonymous workspace roundtrip returns to ordinary log
   await expect(page.getByRole('heading', { name: '登录 QWERTY Plus', exact: true })).toBeVisible()
   await expect(page.getByText('学习数据安全检查未通过', { exact: true })).toHaveCount(0)
   expect(network.calls.filter((c) => /\/api\/sync/.test(c.path))).toEqual([])
+})
+
+test('administrator old witness error survives refresh and has a complete recovery exit', async ({ page }, info) => {
+  test.skip(pagesUI, 'Pages has no authenticated workspace recovery.')
+  const network = api(page)
+  await network.ready
+  await page.goto(uiPath('/?s1-account=manage'))
+  await expect(page.getByRole('heading', { name: '登录 QWERTY Plus', exact: true })).toBeVisible()
+  await page.goto(uiPath('/admin'))
+  await expect(page.getByRole('heading', { name: '登录管理控制台' })).toBeVisible()
+  const before = await seedSealedLegacyAdministrator(page, admin)
+  await page.evaluate(() => localStorage.removeItem('qwerty.cloudAuth.v1'))
+  // The reported browser has neither an admin session nor an admin-return URL.
+  await page.goto(uiPath(info.project.name.startsWith('phone') ? '/mobile' : '/'))
+  await expect(page.getByRole('heading', { name: '学习数据安全检查未通过' })).toBeVisible()
+  await page.getByRole('button', { name: '重新检查', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '学习数据安全检查未通过' })).toBeVisible()
+  expect(await page.evaluate(() => localStorage.getItem('qwerty.s1.workspace-migrated.v1'))).toBe(before.witness)
+  expect(await page.evaluate(() => localStorage.getItem('qwerty.cloudAuth.v1'))).toBeNull()
+  expect(network.calls).toEqual([])
+  const recover = page.getByRole('link', { name: '管理员切换恢复', exact: true })
+  await expect(recover).toBeInViewport()
+  await auditVisibleUI(page, info, 'administrator-old-error-recovery-exit')
+  await page.screenshot({ path: info.outputPath('administrator-old-error-recovery-exit.png'), fullPage: true })
+  await recover.click()
+  await expect(page.getByRole('heading', { name: '登录管理控制台', exact: true })).toBeVisible()
+  await page.getByLabel('管理员密码').fill('synthetic-password')
+  await page.getByRole('button', { name: '进入管理控制台', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '运营概览', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '普通账号登录', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '恢复普通账号登录', exact: true })).toBeVisible()
+  await page.getByLabel('我确认先保留完整本机副本，再恢复普通账号登录').check()
+  await page.getByRole('button', { name: '保留数据并恢复普通登录' }).click()
+  await expect(page.getByRole('heading', { name: '登录 QWERTY Plus', exact: true })).toBeVisible({ timeout: 30000 })
+  const after = await inspectReturnedWorkspace(page, adminId)
+  expect(after.active).toEqual({ kind: 'anonymous' })
+  expect(after.rows).toEqual([])
+  expect(after.anonymousFingerprint).toBe(before.anonymousFingerprint)
+  expect(after.adminSnapshot).toContain('preserved-admin-word')
+  expect(after.rollbackCount).toBe(1)
+  expect(after.auth).toBeNull()
+  expect(after.management).toBeNull()
+  expect(after.returnTicket).toBeNull()
+  expect(network.calls.filter((c) => /\/api\/(sync|maintenance|circle)/.test(c.path))).toEqual([])
 })
 
 for (const [damaged, fallback] of [
