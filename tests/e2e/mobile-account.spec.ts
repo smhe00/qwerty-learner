@@ -78,7 +78,7 @@ test('both phone menu entries open the guarded login surface and back keeps loca
   await expect(page.locator('[data-account-overview]')).toHaveCount(0)
   await expect(account(page)).toBeVisible()
   await page.getByRole('button', { name: '暂不登录，继续本机学习' }).tap()
-  await expect(page.locator('[data-mobile-menu]')).toBeVisible()
+  await expect(page.locator('[data-mobile-data]')).toBeVisible()
 })
 
 test('registration tabs, native validation and password visibility never send unintended requests', async ({ page }) => {
@@ -132,14 +132,17 @@ test('successful login and offline logout preserve separate anonymous learning r
   await seed(page)
   await mockAuth(page)
   const authRequests: string[] = []
+  const dialogs: string[] = []
   page.on('request', (request) => {
     if (request.url().includes('/api/')) authRequests.push(request.url())
   })
-  page.on('dialog', (dialog) => dialog.accept())
+  page.on('dialog', async dialog => { dialogs.push(dialog.message()); await dialog.accept() })
   await open(page)
   await credentials(page)
   await page.getByLabel('账户密码', { exact: true }).press('Enter')
   await expect(page.locator('[data-mobile-menu]')).toBeVisible()
+  expect(dialogs).toEqual([])
+  expect(authRequests.filter(url => url.includes('/api/auth/login'))).toHaveLength(1)
   expect(await state(page)).toMatchObject({
     active: { kind: 'account', accountId: 'mobile-account-A' },
     count: 0,
@@ -164,28 +167,32 @@ test('successful login and offline logout preserve separate anonymous learning r
   expect(await state(page)).toMatchObject({ active: { kind: 'anonymous' }, count: 1, auth: null })
 })
 
-test('cancelled login does not save credentials or switch the anonymous workspace', async ({ page }) => {
+test('leaving a filled login form never authenticates or switches the anonymous workspace', async ({ page }) => {
   await seed(page)
-  await mockAuth(page)
-  page.once('dialog', (dialog) => dialog.dismiss())
+  let calls = 0
+  await page.route('**/api/auth/login', route => { calls++; return route.abort() })
   await open(page)
   await credentials(page)
-  await page.getByRole('button', { name: '登录', exact: true }).tap()
-  await expect(page.getByRole('status')).toContainText('已取消登录')
+  await page.getByRole('button', { name: '返回', exact: true }).tap()
+  await expect(page.locator('[data-mobile-menu]')).toBeVisible()
+  expect(calls).toBe(0)
   expect(await state(page)).toMatchObject({ active: { kind: 'anonymous' }, count: 1, auth: null })
 })
 
-test('registration can copy anonymous learning records and retains the original', async ({ page }) => {
+for (const copy of [true, false]) test('registration explicitly ' + (copy ? 'copies' : 'does not copy') + ' anonymous records and retains the original', async ({ page }) => {
   await seed(page)
   await mockAuth(page, 'register', 'mobile-new-account')
-  page.on('dialog', (dialog) => dialog.accept())
+  const dialogs: string[] = []
+  page.on('dialog', async dialog => { dialogs.push(dialog.message()); await dialog.dismiss() })
   await open(page)
   await page.getByRole('tab', { name: '注册', exact: true }).tap()
   await credentials(page)
   await page.getByLabel('注册密码确认').fill('fixture-password')
+  await page.getByRole('checkbox', { name: /带入本机学习记录/ }).setChecked(copy)
   await page.getByRole('button', { name: '注册并登录' }).tap()
   await expect(page.locator('[data-mobile-menu]')).toBeVisible()
-  expect(await state(page)).toMatchObject({ active: { kind: 'account', accountId: 'mobile-new-account' }, count: 1, anonymousSaved: true })
+  expect(dialogs).toEqual([])
+  expect(await state(page)).toMatchObject({ active: { kind: 'account', accountId: 'mobile-new-account' }, count: copy ? 1 : 0, anonymousSaved: true })
 })
 
 test('expired account reauth keeps the same immutable owner and records', async ({ page }) => {
@@ -218,7 +225,7 @@ test('busy requests block duplicate submits and account navigation', async ({ pa
   await open(page)
   await credentials(page)
   await page.getByRole('button', { name: '登录', exact: true }).tap()
-  await expect(page.getByRole('button', { name: '登录', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '正在登录…', exact: true })).toBeDisabled()
   await expect(page.getByRole('button', { name: '返回', exact: true })).toBeDisabled()
   await page.keyboard.press('Enter')
   await page.keyboard.press('Enter')
@@ -255,7 +262,9 @@ test('reauth cannot replace the current immutable account with another user', as
   await seed(page, 'mobile-fixed-owner', true)
   await mockAuth(page, 'login', 'different-owner')
   await open(page)
-  await credentials(page)
+  await expect(page.getByLabel('用户名', { exact: true })).toHaveValue('mobile-user')
+  await expect(page.getByLabel('用户名', { exact: true })).toHaveAttribute('readonly', '')
+  await page.getByLabel('账户密码', { exact: true }).fill('fixture-password')
   await page.getByRole('button', { name: '确认重新登录' }).tap()
   await expect(page.getByRole('status')).toContainText('本机学习记录仍保留')
   expect(await state(page)).toMatchObject({

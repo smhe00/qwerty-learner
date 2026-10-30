@@ -6,6 +6,7 @@ import { administrationRequest } from '../admin/client'
  * Only the active guarded entry may render this surface under the writer lease.
  */
 import { claimAccountVisit, finishPassiveAccountVisit } from './account-passive-return'
+import { beginAccountReturn } from './account-journey'
 import { mountSelfDeleteControls } from './account-self-delete'
 import { SyncApiError, changePassword, login, register } from './api'
 import { browserDeviceId, loadAuth } from './auth'
@@ -80,6 +81,7 @@ export function renderS1AccountManagement(
 
   const controls: HTMLButtonElement[] = []
   let isBusy = false
+  let authenticationAccepted = false
   const setBusy = (busy: boolean, note: string) => {
     isBusy = busy
     status.textContent = note
@@ -94,6 +96,11 @@ export function renderS1AccountManagement(
     passiveVisit = null // Even failed/cancelled authentication may have an unknown server outcome.
     setBusy(true, '准备中…')
     void action().catch((error) => {
+      if (authenticationAccepted) {
+        status.textContent = '学习数据准备未完成，本机记录仍保留。重新检查后可继续。'
+        accountView?.showPreparationError?.()
+        return
+      }
       let detail = error instanceof Error ? error.message : String(error)
       if (error instanceof SyncApiError) {
         detail =
@@ -131,7 +138,7 @@ export function renderS1AccountManagement(
       (
         {
           saving: '正在保存学习记录…',
-          prepared: '正在准备登录…',
+          prepared: '正在准备学习进度…',
           restoring: '正在加载学习记录…',
           recovering: '正在恢复学习记录…',
           complete: '已完成，正在返回学习…',
@@ -141,6 +148,7 @@ export function renderS1AccountManagement(
     )
   const navigate = (message?: string) => {
     if (message) sessionStorage.setItem('qwerty.s1.last-account-result', message)
+    beginAccountReturn(mobile, authenticationAccepted ? 'preparing' : 'returning')
     window.location.replace((REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + (mobile ? '/mobile' : '/'))
   }
   // Authentication switches the isolated workspace under this document's S1
@@ -162,6 +170,9 @@ export function renderS1AccountManagement(
   const reauth = async () => {
     const signed = credential(await login(username.value.trim(), password.value, browserDeviceId()))
     if (await enterAdministration(signed)) return
+    if (active.kind !== 'account' || signed.user.userId !== active.accountId) throw new Error('请使用当前账号重新登录。')
+    authenticationAccepted = true
+    accountView?.setPreparing?.()
     await reauthenticateSameWorkspace(signed)
     finishAuthentication()
   }
@@ -179,12 +190,8 @@ export function renderS1AccountManagement(
       finishAuthentication()
       return
     }
-    if (
-      !window.confirm('登录“' + signed.user.username + '”后，将使用该账号的学习记录。本机未登录时的记录会保留，不会自动合并。继续登录？')
-    ) {
-      setBusy(false, '已取消登录')
-      return
-    }
+    authenticationAccepted = true
+    accountView?.setPreparing?.()
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
     finishAuthentication()
   }
@@ -193,12 +200,10 @@ export function renderS1AccountManagement(
     if (!username.value.trim() || password.value.length < 4 || password.value !== passwordConfirm?.value) {
       throw new Error('请检查用户名与两次输入的注册密码')
     }
-    const copy = window.confirm('是否把本机匿名学习记录复制到新账号？\n确定：复制记录；取消：新账号从空白开始。本机匿名记录始终保留。')
-    if (!window.confirm('确认使用该用户名注册新账户？注册成功后会切换到新账户。')) {
-      setBusy(false, '用户已取消注册')
-      return
-    }
+    const copy = accountView?.copyAnonymousRecords?.() === true
     const signed = credential(await register(username.value.trim(), password.value, browserDeviceId()))
+    authenticationAccepted = true
+    accountView?.setPreparing?.()
     if (copy) {
       setBusy(true, '新账户已注册，正在复制本机学习记录…')
       await copyAnonymousWorkspaceForNewRegistration(signed.user.userId)

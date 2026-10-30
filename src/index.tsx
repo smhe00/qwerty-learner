@@ -11,6 +11,7 @@ import './index.css'
 import { scheduleVisitorCount } from './metrics/visitor-count'
 import { captureFeedbackRecoveryLink } from './feedback/recovery-link'
 import { loadAuth } from './sync/auth'
+import { accountProgressContext, finishAccountReturn } from './sync/account-journey'
 import { presentSafetyDialog, showInformationDialog } from './sync/dialog-presentation'
 import { learningEventSyncEnabled } from './sync/learning-sync-policy'
 import { startPerfStage, timePerfStage } from './sync/perf-diagnostics'
@@ -85,9 +86,14 @@ let releasedForPageHide = false
 let mounted = false
 let stopSessionRevocationMonitor: (() => void) | undefined
 let stopEtestM3BackgroundMonitor: (() => void) | undefined
+let accountProgress: { update(message: string): void } | undefined
 
 function gateUI(title: string, detail: string, action?: string, onRetry: () => void = () => window.location.reload()): void {
   if (!root || mounted) return
+  if (accountProgress && !action && title.startsWith('正在')) {
+    accountProgress.update(detail)
+    return
+  }
   root.replaceChildren()
   const panel = document.createElement('section')
   panel.setAttribute('role', 'status')
@@ -242,6 +248,11 @@ async function start(): Promise<void> {
       const { offerAdministratorReturnRecovery } = await import('./admin/return-recovery')
       if (await offerAdministratorReturnRecovery(root)) return
     }
+    const accountContext = accountProgressContext()
+    if (root && accountContext && !administratorReturn) {
+      const { renderAccountProgress } = await import('./sync/mobile-account-view')
+      accountProgress = renderAccountProgress(root, accountContext)
+    }
     captureFeedbackRecoveryLink()
     if (isLearnCompletionHandoff()) {
       const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
@@ -254,7 +265,7 @@ async function start(): Promise<void> {
       prepareGuardedWorkspaceBoot(onStage, {
         allowLegacy: true,
         localOnly: administratorReturn,
-        writerWaitMs: administratorReturn || /\/mobile\/account\/?$/.test(window.location.pathname) ? 3000 : 0,
+        writerWaitMs: administratorReturn || accountContext ? 3000 : 0,
       }),
     )
     if (releasedForPageHide) {
@@ -507,6 +518,9 @@ async function start(): Promise<void> {
     }
     // Importing the old app initializes store atoms and DB modules. This
     // module must never be evaluated before the boot gate resolves.
+    // The home boot above is still the single sync/recovery owner. Only now
+    // restore the presentation route, before any app/learning writer mounts.
+    finishAccountReturn()
     const finishFirstFrame = startPerfStage('startup', 'entry-to-first-frame')
     await timePerfStage('startup', 'app-module-import', () => import('./app'))
     mounted = true

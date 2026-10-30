@@ -43,6 +43,6 @@ test('Pages desktop shares account preview, disables cloud and returns to the PC
   await auditVisibleUI(page, info, 'pages-register-result')
   expect(calls).toBe(0)
   await page.getByRole('button', { name: '返回', exact: true }).click()
-  await expect(page).toHaveURL(/\/qwerty-learner\/$/)
+  await expect(page).toHaveURL(/\/qwerty-learner\/learn$/)
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
 })

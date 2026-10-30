@@ -94,7 +94,7 @@ export async function auditVisibleUI(page: Page, info: TestInfo, state: string, 
   if (
     audit.violations.length ||
     audit.geometry.length ||
-    /^(guide-.*|responsive-.*|pages-login|pages-register|home|learn-exposure|settings-save|circle-动态|song-gallery|song-detail|render-failure-recovery|settlement-complete)$/.test(state)
+    /^(account-flow-.*|guide-.*|responsive-.*|pages-login|pages-register|home|learn-exposure|settings-save|circle-动态|song-gallery|song-detail|render-failure-recovery|settlement-complete)$/.test(state)
   )
     await page.screenshot({ path: info.outputPath(state + '.png'), fullPage: Boolean(audit.violations.length || audit.geometry.length) })
   expect.soft(audit.violations, state + ' accessibility').toEqual([])
@@ -108,7 +108,10 @@ export async function prepareVisibleUI(page: Page, dark: boolean) {
   page.on('pageerror', (error) => errors.push(error.message))
   await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: dark ? 'dark' : 'light' })
   await page.addInitScript((dark) => {
-    localStorage.setItem('isOpenDarkModeAtom', JSON.stringify(dark))
+    // Theme belongs to the active workspace. Seed a fresh origin only; a
+    // document-navigation hook must not mutate a newly activated sealed owner.
+    if (localStorage.getItem('qwerty.s1.workspace-migrated.v1') === null)
+      localStorage.setItem('isOpenDarkModeAtom', JSON.stringify(dark))
     HTMLMediaElement.prototype.play = () => Promise.reject(new DOMException('autoplay blocked', 'NotAllowedError'))
   }, dark)
   // No real customer account or external API is used in the UI-only matrix.

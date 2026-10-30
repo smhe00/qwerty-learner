@@ -184,7 +184,7 @@ for (const mode of ['native', 'fallback']) {
       return (window as any).__documentId
     })
     await page.getByRole('button', { name: '在此重试' }).tap()
-    await expect(page.getByRole('heading', { name: '正在准备本地学习数据' })).toBeVisible()
+    await expect(page.locator('[data-account-progress]')).toContainText('正在准备学习，请稍候')
     await expect(page.locator('[data-mobile-account]')).toHaveCount(0)
     await owner.evaluate(() => (window as any).__ownerLease.release())
     await expect(page.locator('[data-mobile-account]')).toBeVisible()

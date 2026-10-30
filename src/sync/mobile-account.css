@@ -219,7 +219,7 @@
   margin-bottom: 20px;
 }
 .mobile-account-registration-notice {
-  margin: 0 0 20px;
+  margin: 16px 0 20px;
   padding: 14px 16px;
   border: 1px solid var(--account-line);
   border-radius: 11px;
@@ -307,6 +307,20 @@ body.mobile-account-document {
 .mobile-account-page[data-account] .mobile-account-top {
   margin: 0 0 18px;
 }
+.mobile-account-page[data-account][data-account-layout='mobile'] {
+  padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+}
+.mobile-account-page[data-account-layout='mobile'] .mobile-account-card {
+  max-height: calc(100dvh - 16px);
+  padding: 20px 18px;
+}
+.mobile-account-page[data-account-layout='mobile'] .mobile-account-top { margin-bottom: 12px; }
+.mobile-account-page[data-account-layout='mobile'] h1 { margin-bottom: 8px; }
+.mobile-account-page[data-account-layout='mobile'] .mobile-account-tabs { margin-bottom: 14px; }
+.mobile-account-page[data-account-layout='mobile'] .mobile-account-field { margin-bottom: 10px; }
+.mobile-account-page[data-account-layout='mobile'] .mobile-account-field label { margin-bottom: 4px; }
+.mobile-account-page[data-account-layout='mobile'] .mobile-account-field input { min-height: 48px; }
+.mobile-account-page[data-account-layout='mobile'] .mobile-account-preview { padding: 8px; margin-bottom: 12px; }
 
 .mobile-account-registration-notice details {
   margin-top: 8px;
@@ -314,6 +328,40 @@ body.mobile-account-document {
 .mobile-account-registration-notice summary {
   cursor: pointer;
 }
+
+.mobile-account-copy-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0 18px;
+  padding: 10px 0;
+  color: var(--account-text);
+  cursor: pointer;
+}
+.mobile-account-copy-choice input {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0;
+  accent-color: var(--account-accent);
+}
+.mobile-account-copy-choice strong,
+.mobile-account-copy-choice small { display: block; font-size: 13px; line-height: 1.7; }
+.mobile-account-copy-choice small { color: var(--account-muted); font-size: 12px; }
+.mobile-account-login-notice { margin: 0 0 16px; color: var(--account-muted); font-size: 12px; line-height: 1.8; }
+.mobile-account-spinner {
+  display: block;
+  width: 26px;
+  height: 26px;
+  margin: 24px 0 18px;
+  border: 3px solid var(--account-line);
+  border-top-color: var(--account-accent);
+  border-radius: 50%;
+  animation: account-spinner 0.8s linear infinite;
+}
+[data-account-progress] .mobile-account-brand { margin-bottom: 24px; }
+@keyframes account-spinner { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .mobile-account-spinner { animation: none; } }
 
 .mobile-account-self-delete {
   margin-top: 16px;

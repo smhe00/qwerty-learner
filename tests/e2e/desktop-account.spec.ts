@@ -93,7 +93,8 @@ for (const expired of [false, true]) {
     await expect(page.getByRole('heading', { name: '我的账号' })).toBeVisible()
     if (!expired) {
       await expect(page.getByLabel('账户密码', { exact: true })).toBeHidden()
-      await page.getByRole('button', { name: '重新验证登录', exact: true }).click()
+      await expect(page.getByRole('button', { name: '重新验证登录', exact: true })).toBeHidden()
+      await page.goto('/?s1-account=manage&s1-reauth=1')
     }
     await expect(page.getByLabel('用户名', { exact: true })).toHaveValue('desktop-user')
     await page.getByLabel('账户密码', { exact: true }).fill('fixture-password')

@@ -288,7 +288,7 @@ test('published Pages: desktop and phone login entry share an interactive offlin
     await page.getByRole('button', { name: '登录', exact: true }).click()
     await expect(page.getByRole('status')).toContainText('此预览不会登录账号')
     await page.getByRole('button', { name: '返回', exact: true }).click()
-    await expect(page).toHaveURL(new RegExp(mobile ? '/mobile$' : '/qwerty-learner/$'))
+    await expect(page).toHaveURL(new RegExp(mobile ? '/mobile$' : '/qwerty-learner/learn$'))
   }
   expect(requests).toEqual([])
 })
@@ -326,4 +326,33 @@ test('published Pages: user guide is anonymous, device-aware and read-only', asy
   }
   expect(api).toEqual([])
   expect(errors).toEqual([])
+})
+
+test('published Pages: account preview preserves the entry page and exposes registration copy explicitly', async ({ page }) => {
+  test.setTimeout(120_000)
+  const calls: string[] = []
+  page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/')) calls.push(request.url()) })
+  for (const target of ['typing', 'mobile/data']) {
+    const desktop = target === 'typing'
+    await page.setViewportSize(desktop ? { width: 1440, height: 900 } : { width: 390, height: 844 })
+    await page.goto(site + target)
+    const entry = page.getByRole('button', { name: desktop ? '账号：登录或注册' : '管理账号', exact: true })
+    await expect(entry).toBeVisible({ timeout: 30_000 })
+    const before = await readGuideLearningState(page)
+    await entry.click()
+    await expect(page.getByRole('heading', { name: '登录 QWERTY Plus' })).toBeVisible()
+    await expect(page.getByRole('checkbox', { name: /带入本机学习记录/ })).toBeHidden()
+    await page.getByRole('tab', { name: '注册', exact: true }).click()
+    await page.getByRole('checkbox', { name: /带入本机学习记录/ }).uncheck()
+    await page.getByLabel('用户名', { exact: true }).fill('local-preview')
+    await page.getByLabel('账户密码', { exact: true }).fill('preview-only')
+    await page.getByLabel('注册密码确认').fill('preview-only')
+    await page.getByRole('button', { name: '注册并登录' }).click()
+    await expect(page.getByRole('status')).toContainText('此预览不会创建账号')
+    await page.getByRole('button', { name: '返回', exact: true }).click()
+    await expect(entry).toBeVisible({ timeout: 30_000 })
+    await expect(page).toHaveURL(site + target)
+    expect(await readGuideLearningState(page)).toBe(before)
+  }
+  expect(calls).toEqual([])
 })

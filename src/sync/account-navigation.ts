@@ -1,4 +1,5 @@
 import { beginAccountVisit } from './account-passive-return'
+import { rememberAccountEntry } from './account-journey'
 
 /** Account mutations remain behind the existing pre-mount S1 writer guard. */
 export function accountManagementHref(mobile = false): string {
@@ -11,5 +12,6 @@ export function openAccountManagement(mobile = false): void {
   // history/BFCache predecessor or release/steal its lease before destruction.
   // The destination selects login, account management or expired-session login.
   beginAccountVisit(mobile)
+  rememberAccountEntry(mobile)
   window.location.replace(accountManagementHref(mobile))
 }

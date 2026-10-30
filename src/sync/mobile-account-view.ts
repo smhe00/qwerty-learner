@@ -1,6 +1,7 @@
 import './mobile-account.css'
 import type { CloudAuthState } from './types'
 import type { Workspace } from './workspace-transition'
+import { beginAccountReturn } from './account-journey'
 import logo from '@/assets/logo.svg'
 
 type AccountView = {
@@ -152,6 +153,7 @@ export function presentAccount(view: AccountView) {
   username.spellcheck = false
   username.setAttribute('autocorrect', 'off')
   username.value = anonymous ? '' : auth?.user.username || ''
+  username.readOnly = !anonymous
   const passwordField = labelField(password, '密码', 'mobile-account-password')
   password.placeholder = '输入密码'
   password.minLength = 4
@@ -184,7 +186,16 @@ export function presentAccount(view: AccountView) {
   const retention = el('details')
   retention.append(el('summary', '账号保留规则'), el('p', '闲置清理启用后，连续 180 天未使用的账号及云端记录会被清理。本机记录保留。'))
   registrationNotice.append(retention)
-  form.append(inputs, registrationNotice, actions)
+  const copyChoice = el('label', '', 'mobile-account-copy-choice')
+  const copyRecords = el('input')
+  copyRecords.type = 'checkbox'
+  copyRecords.checked = true
+  const copyText = el('span')
+  copyText.append(el('strong', '带入本机学习记录'), el('small', '仅用于新注册账号，原本机记录仍保留。'))
+  copyChoice.append(copyRecords, copyText)
+  fields.push(copyRecords)
+  const loginNotice = el('p', '登录后使用该账号的学习进度。本机未登录时的记录会单独保留。', 'mobile-account-login-notice')
+  form.append(inputs, copyChoice, loginNotice, actions, registrationNotice)
   for (const button of authButtons) {
     button.className = 'mobile-account-primary'
     button.addEventListener(
@@ -201,11 +212,17 @@ export function presentAccount(view: AccountView) {
   form.addEventListener('submit', (event) => event.preventDefault())
   const updateMode = () => {
     const registration = anonymous && mode === 'register'
+    // The mobile heading and form already explain the action. Keep the
+    // primary button in view on short phones instead of repeating an intro.
+    current.hidden = anonymous && mobile
     if (anonymous) {
       heading.textContent = registration ? '注册 QWERTY Plus' : '登录 QWERTY Plus'
       current.textContent = registration ? '创建账号，保存学习进度。' : '登录后同步学习进度。'
     }
     registrationNotice.hidden = !registration
+    copyChoice.hidden = !registration
+    copyRecords.disabled = !registration || busy || disabledCredentials
+    loginNotice.hidden = !anonymous || registration
     if (registration) form.setAttribute('aria-describedby', registrationNotice.id)
     else form.removeAttribute('aria-describedby')
     loginTab.setAttribute('aria-selected', String(!registration))
@@ -259,6 +276,7 @@ export function presentAccount(view: AccountView) {
     reauthToggle = el('button', expired ? '重新登录' : '重新验证登录', 'mobile-account-secondary')
     reauthToggle.type = 'button'
     reauthToggle.setAttribute('aria-expanded', String(credentialsVisible))
+    reauthToggle.hidden = !expired && !reauthenticate
     reauthToggle.addEventListener('click', () => {
       credentialsVisible = !credentialsVisible
       reauthToggle?.setAttribute('aria-expanded', String(credentialsVisible))
@@ -350,7 +368,7 @@ export function presentAccount(view: AccountView) {
     const notice = el(
       'p',
       previewInteraction
-        ? '当前为开发预览：可试用登录和注册界面，不会连接网络或创建账号。请勿输入真实密码。'
+        ? '当前为开发预览，不会登录或创建账号。请勿输入真实密码。'
         : '当前为开发预览，登录和注册暂不可用。你仍可继续本机学习。',
       'mobile-account-preview',
     )
@@ -359,16 +377,90 @@ export function presentAccount(view: AccountView) {
   }
   updateMode()
   const setBusy = (next: boolean) => {
+    const changed = next !== busy
     busy = next
     form.setAttribute('aria-busy', String(next))
     for (const field of fields) field.disabled = next || disabledCredentials
     for (const button of authButtons) button.disabled = next || disabledCredentials
+    if (changed) for (const button of authButtons) {
+      if (next) {
+        button.dataset.idleLabel = button.textContent || ''
+        button.textContent = button === secondary && anonymous ? '正在注册…' : button === authenticate ? '正在登录…' : '正在处理…'
+      } else button.textContent = button.dataset.idleLabel || button.textContent
+    }
+    copyRecords.disabled = next || disabledCredentials || mode !== 'register'
     if (passwordConfirm) passwordConfirm.disabled = next || disabledCredentials || mode !== 'register'
   }
   setBusy(false)
+  overlay.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      if (!busy) back.click()
+    }
+    if (event.key !== 'Tab') return
+    const focusable = Array.from(main.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), summary, a[href]'))
+      .filter(element => element.getClientRects().length > 0 && !element.closest('[hidden]'))
+    const first = focusable[0], last = focusable[focusable.length - 1]
+    if (first && (event.shiftKey ? document.activeElement === first : document.activeElement === last)) {
+      event.preventDefault()
+      ;(event.shiftKey ? last : first).focus()
+    }
+  })
   if (!mobile && !form.hidden && !cloudDisabled) username.focus()
   else heading.focus()
-  return { setBusy }
+  const setPreparing = () => {
+    password.value = ''
+    if (passwordConfirm) passwordConfirm.value = ''
+    form.hidden = true
+    tabs.hidden = true
+    current.hidden = false
+    for (const button of Array.from(main.querySelectorAll<HTMLButtonElement>('button'))) button.hidden = true
+    const deletion = main.querySelector<HTMLElement>('.mobile-account-self-delete')
+    if (deletion) deletion.hidden = true
+    if (reauthToggle) reauthToggle.hidden = true
+    heading.textContent = '正在准备学习进度'
+    current.textContent = '账号验证已通过，正在准备你的学习记录。'
+  }
+  const showPreparationError = () => {
+    setPreparing()
+    heading.textContent = '学习进度尚未就绪'
+    current.textContent = '账号验证已通过。请重新检查，继续完成学习数据准备。'
+    const retry = el('button', '重新检查', 'mobile-account-primary')
+    retry.type = 'button'
+    retry.addEventListener('click', () => window.location.reload())
+    main.insertBefore(retry, status)
+    retry.focus()
+  }
+  return { setBusy, setPreparing, showPreparationError, copyAnonymousRecords: () => anonymous && mode === 'register' && copyRecords.checked }
+}
+
+/** The same writer-free account shell spans document replacement and guarded boot. */
+export function renderAccountProgress(root: HTMLElement, options: { mobile: boolean; preparing: boolean; returning: boolean }) {
+  const overlay = el('div', '', 'mobile-account-page')
+  overlay.dataset.account = ''
+  overlay.dataset.accountProgress = ''
+  overlay.dataset.accountLayout = options.mobile ? 'mobile' : 'desktop'
+  let dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  try { dark = JSON.parse(localStorage.getItem('isOpenDarkModeAtom') || String(dark)) === true } catch { /* system theme */ }
+  overlay.dataset.theme = dark ? 'dark' : 'light'
+  const main = el('section', '', 'mobile-account-card')
+  main.setAttribute('role', 'status')
+  main.setAttribute('aria-live', 'polite')
+  main.setAttribute('aria-busy', 'true')
+  const brand = el('div', '', 'mobile-account-brand')
+  const image = el('img')
+  image.src = logo
+  image.alt = ''
+  image.width = image.height = 32
+  brand.append(image, el('span', 'QWERTY Plus'))
+  const heading = el('h1', options.preparing ? '正在准备学习进度' : options.returning ? '正在返回学习' : '登录 QWERTY Plus')
+  const spinner = el('span', '', 'mobile-account-spinner')
+  spinner.setAttribute('aria-hidden', 'true')
+  const status = el('p', options.preparing ? '正在准备你的学习记录…' : options.returning ? '正在恢复学习页面…' : '正在打开登录…', 'mobile-account-description')
+  main.append(brand, heading, spinner, status)
+  overlay.append(main)
+  root.replaceChildren(overlay)
+  return { update: (message: string) => { status.textContent = message } }
 }
 
 /** Read-only preview for legacy storage. Never imports auth or workspace IO. */
@@ -402,9 +494,10 @@ export function renderAccountPreview(root: HTMLElement | null, options: { mobile
   const register = el('button', '注册并登录')
   const back = el('button', '返回')
   for (const button of [login, register, back]) button.type = 'button'
-  back.addEventListener('click', () =>
-    window.location.replace((REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + (mobile ? '/mobile' : '/')),
-  )
+  back.addEventListener('click', () => {
+    beginAccountReturn(mobile, 'returning')
+    window.location.replace((REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + (mobile ? '/mobile' : '/'))
+  })
   actions.append(username, password, passwordConfirm, login, register, back)
   main.append(heading, current, authState, guidance, actions, status)
   overlay.append(main)
