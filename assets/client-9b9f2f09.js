@@ -1,0 +1,1 @@
+import"./app-4967e790.js";globalThis.jotaiAtomCache=globalThis.jotaiAtomCache||{cache:new Map,get(t,a){return this.cache.has(t)?this.cache.get(t):(this.cache.set(t,a),a)}};const o=!1;class e extends Error{constructor(a,s){super(a),this.status=s}}async function i(t,a={}){throw new Error("当前为界面预览，不连接管理服务。")}export{e as A,o as a,i as b};
