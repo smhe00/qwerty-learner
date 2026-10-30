@@ -73,73 +73,78 @@ async function context(browser: Browser, server: SessionServer) {
   return ctx
 }
 
-test('revoked device can reauthenticate same account without losing offline records', async ({ browser }) => {
-  const server = new SessionServer()
-  const a = await context(browser, server)
-  const b = await context(browser, server)
-  try {
-    const pageA = await setupAccount(a, TOKEN_A, true)
-    const pageB = await setupAccount(b, TOKEN_B, false)
-    await pageA.goto('/')
-    // B becomes sole valid session; the stale A must retain its IDB data.
-    const signed = await pageB.evaluate(async () =>
-      (await fetch('/api/auth/login', { method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'revocation-test', password: 'testing' }),
-      })).json())
-    expect(signed.token).toBe(TOKEN_B)
-    await pageA.waitForTimeout(5500)
-    await pageA.bringToFront()
-    const alert = pageA.getByRole('alertdialog')
-    await expect(alert).toBeVisible({ timeout: 25_000 })
-    await expect(alert).toContainText('原账号的学习记录仍安全保留')
-    await alert.getByRole('button', { name: '重新登录当前账号并继续' }).click()
+for (const target of ['/typing', '/mobile/data']) {
+  test('revoked device can reauthenticate same account without losing offline records: ' + target, async ({ browser }) => {
+    const server = new SessionServer()
+    const a = await context(browser, server)
+    const b = await context(browser, server)
+    try {
+      const pageA = await setupAccount(a, TOKEN_A, true)
+      const pageB = await setupAccount(b, TOKEN_B, false)
+      if (target.startsWith('/mobile')) await pageA.setViewportSize({ width: 390, height: 844 })
+      await pageA.goto(target)
+      // B becomes sole valid session; the stale A must retain its IDB data.
+      const signed = await pageB.evaluate(async () =>
+        (await fetch('/api/auth/login', { method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'revocation-test', password: 'testing' }),
+        })).json())
+      expect(signed.token).toBe(TOKEN_B)
+      await pageA.waitForTimeout(5500)
+      await pageA.bringToFront()
+      const alert = pageA.getByRole('alertdialog')
+      await expect(alert).toBeVisible({ timeout: 25_000 })
+      await expect(alert).toContainText('原账号的学习记录仍安全保留')
+      await alert.getByRole('button', { name: '重新登录当前账号并继续' }).click()
 
-    // S1 account reauth happens pre-mount and MUST NOT stage an
-    // account-to-anonymous transaction or discard local WorkSpace V4.
-    await expect(pageA).toHaveURL(/s1-account=manage/, { timeout: 25_000 })
-    const manage = pageA.locator('[data-account]')
-    await expect(manage).toBeVisible({ timeout: 25_000 })
-    const oldOwner = await pageA.evaluate(async () => {
-      const h = (window as any).__backupHarness
-      return h ? (await h.workspaceRegistryPort.read()).active : null
-    }).catch(() => null)
-    // In the pre-mount login realm, no React/RecordDB writer is present.
-    expect(oldOwner).toBeNull()
-    await expect(pageA.getByLabel('账户密码', { exact: true })).toBeVisible()
-    await expect(manage).toContainText('输入密码，重新登录。')
-    await pageA.getByLabel('用户名', { exact: true }).fill('revocation-test')
-    await pageA.getByLabel('账户密码', { exact: true }).fill('testing')
-    await manage.getByRole('button', { name: '确认重新登录', exact: true }).click()
-    await expect.poll(async () => pageA.evaluate(() => {
-      const auth = localStorage.getItem('qwerty.cloudAuth.v1')
-      return auth ? JSON.parse(auth).token : null
-    }).catch(() => null), { timeout: 35_000 }).toBe(TOKEN_B)
-    // Token durability precedes asynchronous full-V4 admission and the
-    // account document's location.replace. Wait for the REAL app handoff
-    // before opening the readback harness, or that pending navigation can
-    // abort the observer's goto. Keep all durable-data assertions below.
-    await expect(pageA).toHaveURL(/\/(?:learn)?$/, { timeout: 35_000 })
-    await expect(pageA.getByRole('button', { name: '打开设置对话框' }))
-      .toBeVisible({ timeout: 35_000 })
+      // S1 account reauth happens pre-mount and MUST NOT stage an
+      // account-to-anonymous transaction or discard local WorkSpace V4.
+      await expect(pageA).toHaveURL(target.startsWith('/mobile') ? /\/mobile\/account\?s1-reauth=1/ : /s1-account=manage/, { timeout: 25_000 })
+      const manage = pageA.locator('[data-account]')
+      await expect(manage).toBeVisible({ timeout: 25_000 })
+      const oldOwner = await pageA.evaluate(async () => {
+        const h = (window as any).__backupHarness
+        return h ? (await h.workspaceRegistryPort.read()).active : null
+      }).catch(() => null)
+      // In the pre-mount login realm, no React/RecordDB writer is present.
+      expect(oldOwner).toBeNull()
+      await expect(pageA.getByLabel('账户密码', { exact: true })).toBeVisible()
+      await expect(manage).toContainText('输入密码，重新登录。')
+      await expect(pageA.getByLabel('用户名', { exact: true })).toHaveValue('revocation-test')
+      await expect(pageA.getByLabel('用户名', { exact: true })).toHaveAttribute('readonly', '')
+      await pageA.getByLabel('账户密码', { exact: true }).fill('testing')
+      await manage.getByRole('button', { name: '确认重新登录', exact: true }).click()
+      await expect.poll(async () => pageA.evaluate(() => {
+        const auth = localStorage.getItem('qwerty.cloudAuth.v1')
+        return auth ? JSON.parse(auth).token : null
+      }).catch(() => null), { timeout: 35_000 }).toBe(TOKEN_B)
+      // Token durability precedes asynchronous full-V4 admission and the
+      // account document's location.replace. Wait for the REAL app handoff
+      // before opening the readback harness, or that pending navigation can
+      // abort the observer's goto. Keep all durable-data assertions below.
+      await expect(pageA).toHaveURL(new RegExp(target + '$'), { timeout: 35_000 })
+      await expect(pageA.locator(target.startsWith('/mobile') ? '[data-mobile-data]' : '[data-account-entry]'))
+        .toBeVisible({ timeout: 35_000 })
 
-    await pageA.goto('/tests/e2e/backup-harness.html')
-    const after = await pageA.evaluate(async () => {
-      const h = (window as any).__backupHarness
-      const reg = await h.workspaceRegistryPort.read()
-      const rows = await h.db.wordRecords.toArray()
-      return { active: reg.active, pending: reg.pending,
-        attemptWords: rows.map((row: any) => row.word),
-        token: JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || '{}').token }
-    })
-    expect(after.active).toEqual(OWNER)
-    expect(after.pending).toBeNull()
-    expect(after.attemptWords).toContain('backup-fsrs-word')
-    expect(after.token).toBe(TOKEN_B)
-  } finally {
-    await Promise.all([a.close(), b.close()])
-  }
-})
+      await pageA.goto('/tests/e2e/backup-harness.html')
+      const after = await pageA.evaluate(async () => {
+        const h = (window as any).__backupHarness
+        const reg = await h.workspaceRegistryPort.read()
+        const rows = await h.db.wordRecords.toArray()
+        return { active: reg.active, pending: reg.pending,
+          attemptWords: rows.map((row: any) => row.word),
+          token: JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || '{}').token }
+      })
+      expect(after.active).toEqual(OWNER)
+      expect(after.pending).toBeNull()
+      expect(after.attemptWords).toContain('backup-fsrs-word')
+      expect(after.token).toBe(TOKEN_B)
+    } finally {
+      await Promise.all([a.close(), b.close()])
+    }
+  })
+
+}
 
 test('B login revokes A; A confirmation completes S1 durable anonymous switch', async ({ browser }) => {
   const server = new SessionServer()

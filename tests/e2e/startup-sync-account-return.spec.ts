@@ -144,7 +144,10 @@ for (const fails of [false, true]) {
     await learning(page, false)
     await account(page, false)
     if (fails) state.failLogin()
-    await page.getByRole('button', { name: '重新验证登录', exact: true }).click()
+    // Healthy accounts do not advertise redundant reauthentication. Enter
+    // the same explicit required-reauth mode used by an expired session.
+    await expect(page.getByRole('button', { name: '重新验证登录', exact: true })).toHaveCount(0)
+    await page.goto(origin + '/?s1-account=manage&s1-reauth=1')
     await page.getByLabel('账户密码', { exact: true }).fill('synthetic-password')
     state.sync.length = 0
     await page.getByRole('button', { name: '确认重新登录', exact: true }).click()

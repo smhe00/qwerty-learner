@@ -171,6 +171,7 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
     await page.getByLabel('账户密码', { exact: true }).fill(password)
     if (register) {
       await page.getByLabel('注册密码确认', { exact: true }).fill(password)
+      await page.getByRole('checkbox', { name: '带入本机学习记录' }).uncheck()
     }
     const currentUrl = page.url()
     const dialogs: string[] = []
@@ -194,11 +195,11 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
       } catch { /* Ignore navigation noise */ }
     }
     page.on('response', onAuthResponse)
-    page.on('dialog', async dialog => {
+    const onDialog = async (dialog: import('@playwright/test').Dialog) => {
       dialogs.push(dialog.message())
-      if (dialog.message().includes('是否把本机匿名学习记录')) await dialog.dismiss()
-      else await dialog.accept()
-    })
+      await dialog.dismiss()
+    }
+    page.on('dialog', onDialog)
     try {
       await page.getByRole('button', {
         name: register ? '注册并登录' : '登录', exact: true,
@@ -210,7 +211,7 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
         const json = localStorage.getItem('qwerty.cloudAuth.v1')
         return json ? JSON.parse(json)?.user?.username : null
       }).catch(() => null), { timeout: 60000 }).toBe(username)
-      expect(dialogs.length).toBeGreaterThanOrEqual(register ? 2 : 1)
+      expect(dialogs).toEqual([])
     } catch (error) {
       console.error('S1 etest auth checkpoint', {
         kind: register ? 'registration' : 'login',
@@ -226,6 +227,7 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
       throw error
     } finally {
       page.off('response', onAuthResponse)
+      page.off('dialog', onDialog)
     }
   }
   try {

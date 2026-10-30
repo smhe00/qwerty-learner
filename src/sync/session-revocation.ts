@@ -8,6 +8,8 @@
  */
 import { SyncApiError, getMe } from './api'
 import { loadAuth } from './auth'
+import { rememberAccountEntry } from './account-journey'
+import { accountManagementHref } from './account-navigation'
 import { applyDialogTheme } from './dialog-presentation'
 import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
 import type { Registry } from './workspace-transition'
@@ -118,7 +120,12 @@ export function startSessionRevocationMonitor(registry: Registry): () => void {
       reauth.disabled = true
       confirm.disabled = true
       note.textContent = '正在进入安全登录页面；本机原账号学习记录保持不变…'
-      window.location.replace('/?s1-account=manage&s1-reauth=1')
+      // Remember only presentation context. A revoked token must never mint
+      // the passive-return proof used by ordinary, still-valid account visits.
+      const mobile = /\/mobile(?:\/|$)/.test(window.location.pathname)
+      rememberAccountEntry(mobile)
+      const href = accountManagementHref(mobile)
+      window.location.replace(href + (mobile ? '?' : '&') + 's1-reauth=1')
     })
     const confirm = addText('button', '确认退出并切换到本机匿名工作区')
     confirm.type = 'button'

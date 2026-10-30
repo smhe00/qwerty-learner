@@ -132,13 +132,14 @@ async function bootPageEvidence(page: Page) {
   }).catch(() => ({ unavailable: true }))
 }
 async function openAccount(page: Page, username: string, password: string, authAttempt: AuthAttempt) {
-  await page.goto(new URL('/?s1-account=manage', base).href,
+  await page.goto(new URL('/?s1-account=manage&s1-reauth=1', base).href,
     { waitUntil: 'domcontentloaded' })
   const dialog = page.locator('[data-account]')
   await expect(dialog).toBeVisible({ timeout: 55_000 })
-  const reauthToggle = page.getByRole('button', { name: '重新验证登录', exact: true })
-  if (await reauthToggle.isVisible().catch(() => false)) await reauthToggle.click()
-  await page.getByLabel('用户名', { exact: true }).fill(username)
+  const name = page.getByLabel('用户名', { exact: true })
+  await expect(name).toBeVisible({ timeout: 55_000 })
+  if (await name.getAttribute('readonly') !== null) await expect(name).toHaveValue(username)
+  else await name.fill(username)
   await page.getByLabel('账户密码', { exact: true }).fill(password)
   page.on('dialog', d => d.accept())
   const reauth = page.getByRole('button', { name: '确认重新登录', exact: true })

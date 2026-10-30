@@ -453,7 +453,7 @@ export function renderAccountProgress(root: HTMLElement, options: { mobile: bool
   image.alt = ''
   image.width = image.height = 32
   brand.append(image, el('span', 'QWERTY Plus'))
-  const heading = el('h1', options.preparing ? '正在准备学习进度' : options.returning ? '正在返回学习' : '登录 QWERTY Plus')
+  const heading = el('h1', options.preparing ? '正在准备学习进度' : options.returning ? '正在返回学习' : '正在打开账号')
   const spinner = el('span', '', 'mobile-account-spinner')
   spinner.setAttribute('aria-hidden', 'true')
   const status = el('p', options.preparing ? '正在准备你的学习记录…' : options.returning ? '正在恢复学习页面…' : '正在打开登录…', 'mobile-account-description')

@@ -25,15 +25,16 @@ async function request(path: string, method: string, body?: object, token?: stri
     { path, method },
   )
 }
-async function account(page: Page) {
-  await page.goto(base + '/?s1-account=manage', { waitUntil: 'domcontentloaded' })
+async function account(page: Page, reauthenticate = false) {
+  await page.goto(base + '/?s1-account=manage' + (reauthenticate ? '&s1-reauth=1' : ''), { waitUntil: 'domcontentloaded' })
   await expect(page.locator('[data-account]')).toBeVisible({ timeout: 60_000 })
 }
 async function login(page: Page, username: string, password: string) {
-  await account(page)
-  const toggle = page.getByRole('button', { name: '重新验证登录', exact: true })
-  if (await toggle.isVisible()) await toggle.click()
-  await page.getByLabel('用户名', { exact: true }).fill(username)
+  await account(page, true)
+  const name = page.getByLabel('用户名', { exact: true })
+  await expect(name).toBeVisible({ timeout: 60_000 })
+  if (await name.getAttribute('readonly') !== null) await expect(name).toHaveValue(username)
+  else await name.fill(username)
   await page.getByLabel('账户密码', { exact: true }).fill(password)
   const response = page.waitForResponse(async (r) => {
     if (new URL(r.url()).pathname !== '/api/auth/login') return false
