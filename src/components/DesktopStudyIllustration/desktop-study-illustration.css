@@ -24,7 +24,13 @@
   line-height: 1.7;
   text-align: center;
 }
-.desktop-study-illustration a { color: inherit; text-underline-offset: 3px; }
+.desktop-study-illustration a {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  color: inherit;
+  text-underline-offset: 3px;
+}
 .desktop-study-illustration a:focus-visible { outline: 2px solid var(--focus-accent); outline-offset: 3px; }
 @media (max-width: 1199px), (max-height: 649px) {
   .desktop-study-illustration { display: none; }
