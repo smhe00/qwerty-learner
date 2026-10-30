@@ -4,6 +4,7 @@ import type { Identity } from '../feedback/client'
 import type { CloudAuthState } from '../sync/types'
 import './administration.css'
 import { AdministrationError, administrationEnabled, administrationRequest } from './client'
+import { ordinaryLoginPath, rememberAdministratorReturn } from './ordinary-return'
 import { forgetAdministratorSession, readAdministratorSession, rememberAdministratorSession } from './session'
 import { useEffect, useRef, useState } from 'react'
 
@@ -173,6 +174,17 @@ export default function AdministratorApplication({ admissionError = '' }: { admi
             <button
               type="button"
               disabled={busy}
+              onClick={() => {
+                if (auth && !preview) rememberAdministratorReturn(auth)
+                forgetAdministratorSession()
+                window.location.replace(ordinaryLoginPath())
+              }}
+            >
+              普通账号登录
+            </button>
+            <button
+              type="button"
+              disabled={busy}
               onClick={() =>
                 void run(async () => {
                   const token = auth?.token
@@ -271,13 +283,7 @@ export default function AdministratorApplication({ admissionError = '' }: { admi
             )}
             {notice && <p role="status">{notice}</p>}
             <p className="admin-note">管理会话与学习账号分开。这里不加载学习数据，也不参与学习进度同步。</p>
-            <a
-              className="admin-account-link"
-              href={
-                (REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') +
-                (window.location.pathname.includes('/mobile') ? '/mobile/account' : '/?s1-account=manage')
-              }
-            >
+            <a className="admin-account-link" href={ordinaryLoginPath()}>
               普通账号登录
             </a>
           </section>

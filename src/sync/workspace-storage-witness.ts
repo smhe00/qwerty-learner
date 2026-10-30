@@ -54,6 +54,8 @@ function integrityFingerprint(storage: Storage): string {
     (b >>> 0).toString(16).padStart(8, '0')
 }
 
+export function currentWorkspaceStorageWitness(): string { return integrityFingerprint(localStorage) }
+
 export function assertWorkspaceMigrationWitness(): 'legacy' | 'sealed' {
   const actual = localStorage.getItem(S1_MIGRATION_WITNESS_KEY)
   if (actual === 'v1') return 'legacy' // Pre-existing S1 test profiles only.

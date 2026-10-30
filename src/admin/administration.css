@@ -344,3 +344,8 @@
   text-decoration: underline;
   color: var(--admin-ink);
 }
+
+.admin-identity {
+  flex-wrap: wrap;
+  white-space: normal;
+}

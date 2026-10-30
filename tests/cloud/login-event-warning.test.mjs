@@ -107,7 +107,7 @@ const event = {
   mistakes: {},
 }
 const fullV4 = ''
-async function loginAgain({ rows = [], failure, v4Continue = true, adoption = 'skipped', administrator = false } = {}) {
+async function loginAgain({ rows = [], failure, v4Continue = true, adoption = 'skipped', administrator = false, localOnly = false } = {}) {
   const original = structuredClone(rows)
   const calls = []
   const session = new Map()
@@ -204,7 +204,7 @@ async function loginAgain({ rows = [], failure, v4Continue = true, adoption = 's
   }
   assert.deepEqual(calls, ['login', 'switch'], 'account UI must not run a duplicate sync pipeline')
   try {
-    await boot()
+    await boot(undefined, { localOnly })
   } catch (error) {
     assert.match(error.message, /S2 Pull staged; reload required|M4 merge recovery completed; reload required/)
   }
@@ -266,4 +266,11 @@ test('staged V4 recovery does not enter event publication', async () => {
 
 test('admin entered through ordinary login diverts before workspace switching or any sync pipeline', async () => {
   await loginAgain({ administrator: true, rows: [event] })
+})
+
+
+test('local-only account return keeps all startup learning transports off', async () => {
+  const { calls, summary } = await loginAgain({ localOnly: true, rows: [event] })
+  assert.deepEqual(calls, ['login', 'switch'])
+  assert.equal(summary, '')
 })

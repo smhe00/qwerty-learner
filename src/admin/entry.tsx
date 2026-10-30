@@ -14,8 +14,8 @@ export async function mountAdministratorApplication(root: HTMLElement | null) {
   if (!root) throw new Error('Missing administrator root')
   let admissionError = ''
   // Legacy admin login stays in its old namespace without restoring, exporting,
-  // deleting or reassigning its learning workspace. Move only the credential
-  // after fresh server authorization; subsequent operations use the admin session.
+  // deleting or reassigning its learning workspace. Copy only the credential
+  // after fresh server authorization; never mutate the S1-protected auth pointer.
   if (!isAdministratorPath() && !readAdministratorSession() && administrationEnabled) {
     try {
       const legacy = JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null') as CloudAuthState | null
@@ -27,8 +27,6 @@ export async function mountAdministratorApplication(root: HTMLElement | null) {
         })
         if (access.administrator !== true) throw new Error('该账号未通过管理员权限核验。')
         rememberAdministratorSession(legacy)
-        if (JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null')?.token === legacy.token)
-          localStorage.removeItem('qwerty.cloudAuth.v1')
       }
     } catch (error) {
       admissionError = error instanceof Error ? error.message : '管理身份核验失败。'

@@ -23,7 +23,7 @@ const SHA256 = /^[a-f0-9]{64}$/
 export type PendingManualV4Import = {
   version: 1
   /** Optional operation label; old journals without it remain fully valid. */
-  purpose?: 'clear-local-learning'
+  purpose?: 'clear-local-learning' | 'administrator-return'
   owner: WorkspaceIdentityV4
   originalOwner: WorkspaceIdentityV4
   registryGeneration: number
@@ -54,7 +54,7 @@ function parseStored(value: unknown): StoredImport {
   if (!value || typeof value !== 'object') throw new Error('Corrupt manual V4 import journal')
   const record = value as Partial<StoredImport>
   if (record.version !== 1 ||
-      (record.purpose !== undefined && record.purpose !== 'clear-local-learning') ||
+      (record.purpose !== undefined && record.purpose !== 'clear-local-learning' && record.purpose !== 'administrator-return') ||
       !record.owner || !record.originalOwner ||
       !Number.isSafeInteger(record.registryGeneration) ||
       Number(record.registryGeneration) < 1 ||
@@ -101,7 +101,7 @@ export const manualV4ImportJournalPort = {
     registryGeneration: number
     original: WorkspaceSnapshotV4
     candidate: WorkspaceSnapshotV4
-    purpose?: 'clear-local-learning'
+    purpose?: 'clear-local-learning' | 'administrator-return'
   }): Promise<PendingManualV4Import> {
     const { owner, originalOwner, registryGeneration, original, candidate, purpose } = input
     assertRestorableWorkspaceV4(original)

@@ -1,3 +1,4 @@
+import { isAdministratorReturn } from './admin/ordinary-return'
 import { administratorHint, isAdministratorPath, readAdministratorSession } from './admin/session'
 /**
  * Sole real-app entry. No import of React/Jotai/RecordDB or domain modules
@@ -227,12 +228,17 @@ async function start(): Promise<void> {
   starting = true
   try {
     await offerSecureLearningEntry(root)
+    const administratorReturn = isAdministratorReturn()
     // Admin is a separate application: no writer lease, RecordDB, store,
     // workspace transition, learning startup sync or background publisher mounts.
-    if (isAdministratorPath() || readAdministratorSession() || administratorHint(loadAuth({ preserveExpired: true }))) {
+    if (!administratorReturn && (isAdministratorPath() || readAdministratorSession() || administratorHint(loadAuth({ preserveExpired: true })))) {
       const { mountAdministratorApplication } = await import('./admin/entry')
       await mountAdministratorApplication(root)
       return
+    }
+    if (administratorReturn) {
+      const { offerAdministratorReturnRecovery } = await import('./admin/return-recovery')
+      if (await offerAdministratorReturnRecovery(root)) return
     }
     captureFeedbackRecoveryLink()
     if (isLearnCompletionHandoff()) {
@@ -245,12 +251,17 @@ async function start(): Promise<void> {
     boot = await timePerfStage('startup', 'guarded-bootstrap', () =>
       prepareGuardedWorkspaceBoot(onStage, {
         allowLegacy: true,
-        writerWaitMs: /\/mobile\/account\/?$/.test(window.location.pathname) ? 3000 : 0,
+        localOnly: administratorReturn,
+        writerWaitMs: administratorReturn || /\/mobile\/account\/?$/.test(window.location.pathname) ? 3000 : 0,
       }),
     )
     if (releasedForPageHide) {
       boot.release()
       return
+    }
+    if (administratorReturn) {
+      const { finishAdministratorReturn } = await import('./admin/return-recovery')
+      if (await finishAdministratorReturn(boot)) return
     }
     // P0 first-visit admission: initialize genuinely empty browser storage
     // BEFORE mounting React/RecordDB writers or allowing anonymous study.
@@ -619,6 +630,13 @@ async function start(): Promise<void> {
       }
     } else {
       gateUI('学习数据安全检查未通过', '已阻止本页写入，现有学习数据不会因此被清空。原因：' + message, '重新检查')
+      if (isAdministratorReturn() && root) {
+        const link = document.createElement('a')
+        link.href = window.location.pathname.includes('/mobile') ? '/mobile/admin' : '/admin'
+        link.textContent = '使用 admin 登录后恢复返回普通账号'
+        link.style.cssText = 'display:block;margin-top:16px;text-decoration:underline;min-height:44px'
+        root.querySelector('section')?.append(link)
+      }
     }
   } finally {
     starting = false

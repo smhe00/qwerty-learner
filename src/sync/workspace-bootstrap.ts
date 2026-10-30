@@ -64,7 +64,7 @@ function report(onStage: ((stage: WorkspaceBootStage) => void) | undefined, stag
  */
 export async function prepareGuardedWorkspaceBoot(
   onStage?: (stage: WorkspaceBootStage) => void,
-  options: { allowLegacy?: boolean; writerWaitMs?: number } = {},
+  options: { allowLegacy?: boolean; writerWaitMs?: number; localOnly?: boolean } = {},
 ): Promise<GuardedWorkspaceBoot> {
   const returnTicket = takePassiveAccountReturn()
   let networkSettled = true
@@ -183,7 +183,7 @@ export async function prepareGuardedWorkspaceBoot(
     const normalLearningEntry =
       ['/', '/learn', '/mobile', '/mobile/study'].includes(window.location.pathname.replace(/\/$/, '') || '/') &&
       (window.location.search === '' || window.location.search === '?m4-reconcile=1')
-    if (registry.active.kind === 'account' && normalLearningEntry && learningEventSyncEnabled()) {
+    if (!options.localOnly && registry.active.kind === 'account' && normalLearningEntry && learningEventSyncEnabled()) {
       beginStartupSyncBudget({ accountId: registry.active.accountId, generation: registry.generation })
     }
 
@@ -249,6 +249,7 @@ export async function prepareGuardedWorkspaceBoot(
     // single-sided remote update is downloaded and durably journaled; a
     // divergent history remains pending and neither side is overwritten.
     if (
+      !options.localOnly &&
       !passiveAccountReturn &&
       startupSyncTimeRemaining() &&
       shouldCheckAccountV4AtStartup({
@@ -284,7 +285,7 @@ export async function prepareGuardedWorkspaceBoot(
     // Blob listing as evidence of whole-account convergence.
     // Retaining local edits must not immediately publish them through M3's
     // alternate startup path. Scheduled/background and explicit sync remain owners.
-    if (!passiveAccountReturn && !uploadDeferred && registry.active.kind === 'account' && learningEventSyncEnabled() && startupSyncTimeRemaining()) {
+    if (!options.localOnly && !passiveAccountReturn && !uploadDeferred && registry.active.kind === 'account' && learningEventSyncEnabled() && startupSyncTimeRemaining()) {
       try {
         const { adoptWitnessedM3AtGuardedBoot } = await import('./m4-witnessed-prefix-browser')
         report(onStage, 'verifying-history')
@@ -334,7 +335,7 @@ export async function prepareGuardedWorkspaceBoot(
         console.warn('M4 witnessed prefix adoption deferred:', error)
       }
     }
-    if (!startupSyncTimeRemaining()) {
+    if (!options.localOnly && !startupSyncTimeRemaining()) {
       networkSettled = false
       sessionStorage.setItem('qwerty.s2.last-sync-result', historySyncNotice(fullDataSynced, historyProgress))
       if (window.location.search === '?m4-reconcile=1') {
