@@ -34,3 +34,10 @@
 .desktop-tap-learn-frame .desktop-practice-word-slot { align-self: stretch; width: 100%; }
 .desktop-tap-learn-frame .mobile-practice-input-row { min-height: 18px; }
 .desktop-tap-learn-frame .mobile-practice-actions { padding-bottom: 12px; }
+/* Reviewed daily sentences are short. Do not reserve the phone's three empty
+   lines above the meaning/usage scroller, especially during PC dictation. */
+.desktop-tap-learn-frame [data-study-example-source=daily] .mobile-practice-example {
+  display: block;
+  min-height: 0;
+  max-height: none;
+}

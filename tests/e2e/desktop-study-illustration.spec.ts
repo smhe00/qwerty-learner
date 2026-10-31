@@ -132,6 +132,22 @@ for (const mode of ['keyboard', 'touch'] as const) {
       expect(requests).toEqual([])
     }
   })
+
+  test('PC ' + mode + ' can reach the final original example without expanding beyond the study viewport', async ({ page }, info) => {
+    test.skip(!info.project.name.startsWith('desktop'), 'PC original-example scrolling')
+    const hear = dictionary.find(word => word.name === 'hear')!
+    await open(page, info.project.name.endsWith('dark'), mode, 'exposure', false, [hear, words[0]])
+    const originals = page.locator('[data-syllabus-examples]')
+    await originals.locator('summary').click()
+    const list = originals.getByRole('list', { name: '考纲原例句' })
+    const last = list.locator('[data-syllabus-example]').last()
+    await last.scrollIntoViewIfNeeded()
+    await expect(last).toContainText(hear.example![hear.example!.length - 1].en)
+    await expect(last).toBeInViewport({ ratio: 1 })
+    expect((await list.boundingBox())!.height).toBeLessThanOrEqual(224)
+    if (mode === 'touch') await expect(page.locator('[data-desktop-tap-practice] .mobile-practice-primary')).toBeInViewport({ ratio: 1 })
+    await auditVisibleUI(page, info, 'daily-long-originals-' + mode)
+  })
 }
 
 test('mobile study never requests PC illustrations, including a desktop-sized window', async ({ page }, info) => {

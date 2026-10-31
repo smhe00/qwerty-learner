@@ -28,3 +28,7 @@ No scheduling, learning-event identity, auth, sync, schema or persistence change
 - Added/updated browser contracts for paired images, negative device/ability examples, all original water examples, neutral dictation masks, zero original-answer details while masked and unchanged phone examples.
 
 Next: push development candidate without changing the Circle task pointer, inspect exact-SHA UI/deploy CI and repair real failures, inspect published Pages, then record final evidence. Keep eTest pinned unless the authorized acceptance scope requires its promotion. Never master.
+
+## First CI feedback
+
+Development candidate bb82c40277ee6990471eba34dcee29e4a8f06374: Dictionary, Achievement and Learn Completion source gates PASS. EdgeOne production UI companion passed all 22 dictionary journeys, but the image suite caught four real clipping failures in PC touch exposure/dictation (both themes): daily label plus the inherited fixed three-line empty example area consumed the meaning/usage height. Retrieved and visually inspected the screenshots; no assertion weakened. Fix removes the unused fixed-height example reservation for reviewed **desktop daily** sentences only. Original phone spacing remains unchanged. Added a bounded, keyboard-focusable original-example scroll list and a regression reaching the final long hear example in both PC modes. New qualification pending.
