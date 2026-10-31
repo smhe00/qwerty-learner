@@ -8,6 +8,7 @@ import style from './index.module.css'
 import { initialWordState } from './type'
 import { decideSuccessInput } from './success'
 import type { WordState } from './type'
+import DesktopStudyIllustration from '@/components/DesktopStudyIllustration'
 import Tooltip from '@/components/Tooltip'
 import type { WordPronunciationIconRef } from '@/components/WordPronunciationIcon'
 import { WordPronunciationIcon } from '@/components/WordPronunciationIcon'
@@ -110,6 +111,7 @@ type WordComponentProps = {
   onHintLevelChange?: (level: ReviewHintLevel | null) => void
   onHintStateChange?: (state: ReviewHintMachineState) => void
   audioOwnerKey: string
+  illustrationVisible?: boolean
 }
 
 export default function WordComponent({
@@ -127,6 +129,7 @@ export default function WordComponent({
   onHintLevelChange,
   onHintStateChange,
   audioOwnerKey,
+  illustrationVisible = false,
 }: WordComponentProps) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
@@ -1201,6 +1204,9 @@ export default function WordComponent({
         className="focus-word-content flex flex-col items-center justify-center pb-1 pt-4"
       >
         {['romaji', 'hapin'].includes(currentLanguage) && word.notation && <Notation notation={word.notation} />}
+        <DesktopStudyIllustration word={word} dictId={currentDictInfo.id}
+          visible={state.isTyping && (illustrationVisible || (!isLearnAttempt && wordDictationConfig.isOpen))}
+          answerVisible={wordState.displayWord.length > 0 && wordState.displayWord.split('').every((_, index) => getLetterVisible(index))}>
         <div
           className={`focus-word-token-frame tooltip-info relative w-fit bg-transparent p-0 leading-normal shadow-none dark:bg-transparent ${
             wordDictationConfig.isOpen ? 'tooltip' : ''
@@ -1299,6 +1305,7 @@ export default function WordComponent({
             </Tooltip>
           </div>
         </div>
+        </DesktopStudyIllustration>
         <ExampleCue word={word} revealed={wordState.isFinished} />
         {saveError && (
           <div role="alert" className="mt-3 max-w-md text-center text-sm">

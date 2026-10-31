@@ -1,5 +1,4 @@
 import DictionaryContent from '@/components/DictionaryContent'
-import DesktopStudyIllustration from '@/components/DesktopStudyIllustration'
 import type { Word } from '@/typings'
 import { getDictionaryContent, getDictionaryMeaning } from '@/utils/dictionaryContent'
 import Tooltip from '@/components/Tooltip'
@@ -12,15 +11,13 @@ import { useCallback, useMemo } from 'react'
 export type TranslationProps = {
   trans: string
   word?: Word
-  dictId?: string
-  showIllustration?: boolean
   showDetails?: boolean
   showTrans?: boolean
   onMouseEnter?: () => void
   onMouseLeave?: () => void
 }
 
-export default function Translation({ trans, word, dictId, showIllustration = false, showDetails = false, showTrans = true, onMouseEnter, onMouseLeave }: TranslationProps) {
+export default function Translation({ trans, word, showDetails = false, showTrans = true, onMouseEnter, onMouseLeave }: TranslationProps) {
   const pronunciationConfig = useAtomValue(pronunciationConfigAtom)
   const fontSizeConfig = useAtomValue(fontSizeConfigAtom)
   const isShowTransRead = window.speechSynthesis && pronunciationConfig.isTransRead
@@ -35,7 +32,6 @@ export default function Translation({ trans, word, dictId, showIllustration = fa
   const isTextSelectable = useAtomValue(isTextSelectableAtom)
   return (
     <div className="focus-translation flex min-h-16 items-center justify-center pb-3 pt-4" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-      {word && dictId && <DesktopStudyIllustration word={word} dictId={dictId} visible={showTrans && showIllustration} />}
       {word && getDictionaryContent(word) ? (
         showTrans ? <DictionaryContent
           key={word.name}

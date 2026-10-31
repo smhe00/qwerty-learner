@@ -620,59 +620,7 @@ export default function MobileWordPractice({
       ? 'clamp(23px, 7vw, 35px)'
       : 'clamp(29px, 8.4vw, 40px)'
 
-  return (
-    <section
-      ref={surfaceRef}
-      className="mobile-practice"
-      data-desktop-tap-practice={desktop || undefined}
-      data-mobile-keyboard-practice={(!desktop && mobileInput.keyboardUsed) || undefined}
-      data-keyboard-practice={keyboardControls || undefined}
-      data-mobile-word-practice
-      data-mobile-task={task}
-      data-mobile-audio-state={audioState}
-      data-mobile-policy={activePlan?.decision.policyVersion ?? 'training'}
-      data-mobile-selector={selection.reason}
-      data-mobile-word={word.name}
-      data-mobile-next-mode={feedback ? (feedback.autoAdvance && !(readingHeld && !desktop) ? 'auto' : 'manual') : 'pending'}
-      data-mobile-reading-held={(!desktop && readingHeld) || undefined}
-      data-mobile-recall-stage={task === 'recall' ? (feedback ? 'saved' : revealedAttempt ? 'verification' : 'unrevealed') : undefined}
-      aria-label={desktop ? '轻触单词学习' : '手机单词学习'}
-    >
-      {desktop && <DesktopStudyIllustration word={word} dictId={dict.id}
-        visible={!paused && (Boolean(feedback) || task === 'exposure' || (task === 'recall' && Boolean(revealedAttempt)))} />}
-      <header className="mobile-practice-head">
-        <div className="mobile-practice-input-row">
-          <span className="mobile-eyebrow">LEARN</span>
-        </div>
-        {!desktop && (mobileInput.keyboardUsed || mobileInput.preference === 'cold-spelling') && (
-          <p className="mobile-keyboard-hint" role="status" data-mobile-keyboard-hint>
-            {mobileInput.preference === 'cold-spelling'
-              ? task === 'spelling'
-                ? mobileInput.keyboardUsed
-                  ? '键盘输入 · Enter 确认拼写'
-                  : '拼写模式 · 输入后确认'
-                : '回忆阶段优先拼写'
-              : '键盘操作可用 · 也可继续轻触'}
-          </p>
-        )}
-        <div className="mobile-practice-title-row">
-          <h1>{title}</h1>
-          <span className="mobile-practice-step">
-            {task === 'exposure' && !feedback ? '看完后继续' : phase === 'independent' ? '独立回忆' : phase === 'supported' ? '巩固' : '学习中'}
-          </span>
-        </div>
-      </header>
-
-      <div
-        className="mobile-practice-reading"
-        data-mobile-reading
-        data-dictionary-reading={Boolean(getDictionaryContent(word)) || undefined}
-        data-example-expanded={(!desktop && exampleExpanded) || undefined}
-        onPointerDown={inspectReading}
-        onScrollCapture={inspectReading}
-        onFocusCapture={inspectReading}
-      >
-        <div className="mobile-practice-word-slot" data-mobile-word-slot>
+  const wordHeading = <>
           {feedback ? (
             <>
               <p className="mobile-practice-feedback-status" data-mobile-feedback role="status">
@@ -751,7 +699,12 @@ export default function MobileWordPractice({
               <p className="mobile-practice-cue">先在心中回忆，再判断是否记得</p>
             )
           ) : task === 'spelling' ? (
-            <p className="mobile-practice-cue">根据词义，完整拼写英文单词</p>
+            <>
+              {desktop && <h2 className="mobile-practice-word" style={{ fontSize: wordFontSize }} aria-label="单词已隐藏">
+                <span aria-hidden="true">••••••</span>
+              </h2>}
+              <p className="mobile-practice-cue">根据词义，完整拼写英文单词</p>
+            </>
           ) : task === 'audio' ? (
             <div className="mobile-practice-audio-hero" aria-hidden="true">
               <Headphones size={35} strokeWidth={1.6} />
@@ -763,6 +716,62 @@ export default function MobileWordPractice({
           ) : (
             <p className="mobile-practice-cue">选出空缺的单词</p>
           )}
+  </>
+
+  return (
+    <section
+      ref={surfaceRef}
+      className="mobile-practice"
+      data-desktop-tap-practice={desktop || undefined}
+      data-mobile-keyboard-practice={(!desktop && mobileInput.keyboardUsed) || undefined}
+      data-keyboard-practice={keyboardControls || undefined}
+      data-mobile-word-practice
+      data-mobile-task={task}
+      data-mobile-audio-state={audioState}
+      data-mobile-policy={activePlan?.decision.policyVersion ?? 'training'}
+      data-mobile-selector={selection.reason}
+      data-mobile-word={word.name}
+      data-mobile-next-mode={feedback ? (feedback.autoAdvance && !(readingHeld && !desktop) ? 'auto' : 'manual') : 'pending'}
+      data-mobile-reading-held={(!desktop && readingHeld) || undefined}
+      data-mobile-recall-stage={task === 'recall' ? (feedback ? 'saved' : revealedAttempt ? 'verification' : 'unrevealed') : undefined}
+      aria-label={desktop ? '轻触单词学习' : '手机单词学习'}
+    >
+      <header className="mobile-practice-head">
+        <div className="mobile-practice-input-row">
+          <span className="mobile-eyebrow">LEARN</span>
+        </div>
+        {!desktop && (mobileInput.keyboardUsed || mobileInput.preference === 'cold-spelling') && (
+          <p className="mobile-keyboard-hint" role="status" data-mobile-keyboard-hint>
+            {mobileInput.preference === 'cold-spelling'
+              ? task === 'spelling'
+                ? mobileInput.keyboardUsed
+                  ? '键盘输入 · Enter 确认拼写'
+                  : '拼写模式 · 输入后确认'
+                : '回忆阶段优先拼写'
+              : '键盘操作可用 · 也可继续轻触'}
+          </p>
+        )}
+        <div className="mobile-practice-title-row">
+          <h1>{title}</h1>
+          <span className="mobile-practice-step">
+            {task === 'exposure' && !feedback ? '看完后继续' : phase === 'independent' ? '独立回忆' : phase === 'supported' ? '巩固' : '学习中'}
+          </span>
+        </div>
+      </header>
+
+      <div
+        className="mobile-practice-reading"
+        data-mobile-reading
+        data-dictionary-reading={Boolean(getDictionaryContent(word)) || undefined}
+        data-example-expanded={(!desktop && exampleExpanded) || undefined}
+        onPointerDown={inspectReading}
+        onScrollCapture={inspectReading}
+        onFocusCapture={inspectReading}
+      >
+        <div className={"mobile-practice-word-slot" + (desktop ? " desktop-practice-word-slot" : "")} data-mobile-word-slot>
+          {desktop ? <DesktopStudyIllustration word={word} dictId={dict.id}
+            visible={!paused && (Boolean(feedback) || task === 'exposure' || task === 'spelling' || (task === 'recall' && Boolean(revealedAttempt)))}
+            answerVisible={task !== 'spelling' || Boolean(feedback)}>{wordHeading}</DesktopStudyIllustration> : wordHeading}
         </div>
 
         <div className="mobile-practice-example-slot" data-mobile-example-slot>

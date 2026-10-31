@@ -1,6 +1,23 @@
+.desktop-study-word-row {
+  display: flex;
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 28px;
+}
+.desktop-study-word-content {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+}
 .desktop-study-illustration {
-  position: fixed;
-  z-index: 2;
+  flex: none;
   margin: 0;
 }
 .desktop-study-illustration img {
@@ -13,6 +30,7 @@
   border-radius: 14px;
   background: #f2ead7;
 }
-@media (max-width: 1199px), (max-height: 649px) {
-  .desktop-study-illustration { display: none; }
-}
+/* Desktop cards do not need the phone's extra thumb/safe-area blank space. */
+.desktop-tap-learn-frame .desktop-practice-word-slot { align-self: stretch; width: 100%; }
+.desktop-tap-learn-frame .mobile-practice-input-row { min-height: 18px; }
+.desktop-tap-learn-frame .mobile-practice-actions { padding-bottom: 12px; }

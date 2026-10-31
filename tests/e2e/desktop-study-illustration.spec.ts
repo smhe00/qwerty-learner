@@ -38,12 +38,15 @@ for (const mode of ['keyboard', 'touch'] as const) {
     await expect(image.locator('figcaption')).toHaveCount(0)
     await expect(image.getByRole('link')).toHaveCount(0)
     const anchor = page.locator(mode === 'keyboard' ? '.focus-word-stack' : '[data-desktop-tap-practice]')
-    const a = (await anchor.boundingBox())!
     const b = (await image.boundingBox())!
-    expect(a.x - b.x - b.width).toBeGreaterThanOrEqual(24)
-    expect(b.x).toBeGreaterThanOrEqual(32)
     const token = (await anchor.locator(mode === 'keyboard' ? '[data-typing-word]' : '.mobile-practice-word').boundingBox())!
-    expect(Math.abs(b.y - token.y)).toBeLessThanOrEqual(1)
+    expect(token.x - b.x - b.width).toBeGreaterThanOrEqual(24)
+    expect(b.x).toBeGreaterThanOrEqual(32)
+    expect(Math.abs(b.y + b.height / 2 - token.y - token.height / 2)).toBeLessThanOrEqual(1)
+    const example = (await anchor.locator(mode === 'keyboard' ? '[data-typing-example]' : '[data-mobile-example-slot]').boundingBox())!
+    expect(example.y - b.y - b.height).toBeGreaterThanOrEqual(8)
+    const meaning = (await anchor.locator('[data-dictionary-senses]').boundingBox())!
+    expect(meaning.y).toBeGreaterThan(b.y + b.height)
     const before = await readReviewModeInfo(page)
     const summary = anchor.locator('[data-dictionary-details] > summary')
     await expect(summary).toBeInViewport({ ratio: 1 })
@@ -89,13 +92,21 @@ for (const mode of ['keyboard', 'touch'] as const) {
     await dialog.getByRole('button', { name: '关闭', exact: true }).click()
   })
 
-  test('PC ' + mode + ' cold recall does not request an answer image', async ({ page }, info) => {
+  test('PC ' + mode + ' hides spelling answers while applying the requested picture cue', async ({ page }, info) => {
     test.skip(!info.project.name.startsWith('desktop'), 'PC experiment')
     const requests: string[] = []
     page.on('request', request => { if (/images\/word-atlas\/.*\.webp/.test(request.url())) requests.push(request.url()) })
     await open(page, info.project.name.endsWith('dark'), mode, 'independent')
-    await expect(page.locator(figure)).toHaveCount(0)
-    expect(requests).toEqual([])
+    if (mode === 'keyboard') {
+      await expect(page.locator(figure)).toBeVisible()
+      await expect(page.locator(figure + ' img')).toHaveAttribute('alt', '单词场景插画')
+      await expect(page.locator('[data-typing-word]')).not.toHaveText('ability')
+      await expect(page.locator('[data-dictionary-details]')).toHaveCount(0)
+      expect(requests.length).toBeGreaterThan(0)
+    } else {
+      await expect(page.locator(figure)).toHaveCount(0)
+      expect(requests).toEqual([])
+    }
   })
 }
 
@@ -122,4 +133,51 @@ test('a failed image removes its frame and leaves meaning and learning actions u
   await expect(card).toHaveAttribute('data-mobile-word', 'able')
   await expect(page.locator(figure)).toHaveAttribute('data-illustration-word', 'able')
   await expect.poll(() => page.locator(figure + ' img').evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(512)
+})
+
+
+test('PC touch dictation shows a scene with a masked word and keeps the submit action visible', async ({ page }, info) => {
+  test.skip(!info.project.name.startsWith('desktop'), 'PC experiment')
+  await open(page, info.project.name.endsWith('dark'), 'touch', 'independent')
+  const card = page.locator('[data-desktop-tap-practice]')
+  await card.getByRole('button', { name: /改用独立拼写/ }).click()
+  await expect(card).toHaveAttribute('data-mobile-task', 'spelling')
+  await expect(page.locator(figure)).toBeVisible()
+  await expect(page.locator(figure + ' img')).toHaveAttribute('alt', '单词场景插画')
+  await expect(card.getByRole('heading', { name: '单词已隐藏', exact: true })).toBeVisible()
+  await expect(card.locator('.mobile-practice-word')).not.toHaveText('ability')
+  await expect(card.locator('[data-dictionary-details]')).toHaveCount(0)
+  await expect(card.locator('.mobile-practice-primary')).toBeInViewport({ ratio: 1 })
+  await expect(card.locator('[data-dictionary-senses]')).toBeInViewport({ ratio: 1 })
+  await auditVisibleUI(page, info, 'pc-image-dictation-touch')
+  await page.screenshot({ path: info.outputPath('pc-image-dictation-touch.png') })
+})
+
+test('Typing dictation shows a neutral scene cue while English letters remain hidden', async ({ page }, info) => {
+  test.skip(!info.project.name.startsWith('desktop'), 'PC experiment')
+  await prepareVisibleUI(page, info.project.name.endsWith('dark'))
+  await page.addInitScript(() => {
+    localStorage.setItem('currentDict', JSON.stringify('shanghai-zhongkao-2027'))
+    localStorage.setItem('currentChapter', '0')
+    localStorage.setItem('reviewModeInfo', JSON.stringify({ isReviewMode: false }))
+    localStorage.setItem('wordDictationConfig', JSON.stringify({ isOpen: true, type: 'hideAll' }))
+    localStorage.setItem('loopWordConfig', JSON.stringify({ times: 1 }))
+    localStorage.setItem('pronunciation', JSON.stringify({ isOpen: false, isTransRead: false, volume: 0, type: 'us', name: '美音', isLoop: false, rate: 1 }))
+  })
+  await page.goto(uiPath('/typing'))
+  await page.getByRole('button', { name: /^(开始练习|继续练习)$/ }).click()
+  const word = page.locator('[data-typing-word]')
+  await expect(word).toHaveAttribute('data-typing-word', 'ability')
+  await expect(word).not.toHaveText('ability')
+  await expect(page.locator(figure)).toBeVisible()
+  await expect(page.locator(figure + ' img')).toHaveAttribute('alt', '单词场景插画')
+  await expect(page.locator('[data-dictionary-senses]')).toHaveText(words[0].content!.senses.map(entry => entry.text).join(''))
+  await expect(page.locator('.focus-translation')).not.toContainText('ability')
+  await expect(page.locator('[data-typing-example-en]')).not.toContainText('ability')
+  await expect(page.locator('[data-dictionary-details]')).toHaveCount(0)
+  await auditVisibleUI(page, info, 'pc-image-dictation-typing')
+  await page.screenshot({ path: info.outputPath('pc-image-dictation-typing.png') })
+  await page.keyboard.type('ability')
+  await expect(word).toHaveAttribute('data-typing-word', 'able')
+  await expect(page.locator(figure)).toHaveAttribute('data-illustration-word', 'able')
 })

@@ -48,6 +48,7 @@ import {
   loopWordConfigAtom,
   phoneticConfigAtom,
   reviewModeInfoAtom,
+  wordDictationConfigAtom,
 } from '@/store'
 import type { Word, WordWithIndex } from '@/typings'
 import { getFirstValidDictionaryExample } from '@/utils/dictionaryExample'
@@ -63,6 +64,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
     if (state.isTyping) setHasSessionStarted(true)
   }, [state.isTyping])
   const phoneticConfig = useAtomValue(phoneticConfigAtom)
+  const wordDictationConfig = useAtomValue(wordDictationConfigAtom)
   const currentDictId = useAtomValue(currentDictIdAtom)
   const isShowPrevAndNextWord = useAtomValue(isShowPrevAndNextWordAtom)
   const [wordComponentKey, setWordComponentKey] = useState(0)
@@ -885,15 +887,14 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
                 managedHintInitialState={currentPersistedHintState}
                 onHintLevelChange={setCurrentReviewHintLevel}
                 onHintStateChange={persistCurrentHintState}
+                illustrationVisible={isReviewMode && state.isTyping && (effectiveTranslationVisible || isColdSemanticProbe)}
                 audioOwnerKey={currentAudioOwnerKey}
                 key={currentWordRenderKey}
               />
               {effectivePhoneticVisible && <Phonetic word={currentWord} />}
               <Translation
                 trans={currentWord.trans.join('；')}
-                word={isReviewMode ? currentWord : undefined}
-                dictId={currentDictId}
-                showIllustration={isReviewMode && !isColdSemanticProbe && state.isTyping}
+                word={isReviewMode || wordDictationConfig.isOpen ? currentWord : undefined}
                 showDetails={isVisibleCopyAttempt || (currentReviewHintLevel !== null && currentReviewHintLevel >= 3)}
                 showTrans={effectiveTranslationVisible}
                 onMouseEnter={() => handleShowTranslation(true)}
