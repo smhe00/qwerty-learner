@@ -7,7 +7,7 @@ import { auditVisibleUI, prepareVisibleUI } from './ui-visible-audit'
 import { uiPath } from './ui-test-path'
 
 const dictionary: Word[] = JSON.parse(readFileSync('public/dicts/ShanghaiZhongkao2027.json', 'utf8'))
-const words = ['ability', 'able', 'remember'].map(name => dictionary.find(word => word.name === name)!)
+const words = ['able', 'bakery', 'remember'].map(name => dictionary.find(word => word.name === name)!)
 const figure = '[data-desktop-study-illustration]'
 
 async function open(page: Page, dark: boolean, mode: 'keyboard' | 'touch', phase: 'exposure' | 'independent', mobile = false, studyWords = words) {
@@ -27,11 +27,11 @@ async function open(page: Page, dark: boolean, mode: 'keyboard' | 'touch', phase
   }
 }
 
-for (const name of ['device', 'zebra', 'less', 'bear', 'amusement']) {
+for (const name of ['bread', 'zebra', 'device', 'bear', 'amusement']) {
   test('expanded catalog preserves the original PC meaning and asset boundary for ' + name, async ({ page }, info) => {
     test.skip(!info.project.name.startsWith('desktop'), 'PC presentation')
     const word = dictionary.find(word => word.name === name)!
-    const expected = !['bear', 'amusement'].includes(name)
+    const expected = ['bread', 'zebra'].includes(name)
     const requests: string[] = []
     page.on('request', request => { if (/images\/word-atlas\/.*\.webp/.test(request.url())) requests.push(request.url()) })
     await open(page, info.project.name.endsWith('dark'), 'keyboard', 'exposure', false, [word, words[0]])
@@ -57,7 +57,7 @@ for (const mode of ['keyboard', 'touch'] as const) {
     await open(page, info.project.name.endsWith('dark'), mode, 'exposure')
     const image = page.locator(figure)
     await expect(image).toBeVisible()
-    await expect(image).toHaveAttribute('data-illustration-word', 'ability')
+    await expect(image).toHaveAttribute('data-illustration-word', 'able')
     await expect.poll(() => image.locator('img').evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(512)
     await expect(image.locator('figcaption')).toHaveCount(0)
     await expect(image.getByRole('link')).toHaveCount(0)
@@ -124,7 +124,7 @@ for (const mode of ['keyboard', 'touch'] as const) {
     if (mode === 'keyboard') {
       await expect(page.locator(figure)).toBeVisible()
       await expect(page.locator(figure + ' img')).toHaveAttribute('alt', '单词场景插画')
-      await expect(page.locator('[data-typing-word]')).not.toHaveText('ability')
+      await expect(page.locator('[data-typing-word]')).not.toHaveText('able')
       await expect(page.locator('[data-dictionary-details]')).toHaveCount(0)
       expect(requests.length).toBeGreaterThan(0)
     } else {
@@ -140,12 +140,15 @@ test('mobile study never requests PC illustrations, including a desktop-sized wi
   await open(page, info.project.name.endsWith('dark'), 'touch', 'exposure', true)
   await expect(page.locator(figure)).toHaveCount(0)
   expect(requests).toEqual([])
+  await expect(page.locator('[data-mobile-example-slot]')).toHaveAttribute('data-study-example-source', 'syllabus')
+  await expect(page.locator('[data-mobile-example]')).toHaveText(words[0].example![0].en)
+  await expect(page.locator('[data-syllabus-examples]')).toHaveCount(0)
 })
 
 test('a failed image removes its frame and leaves meaning and learning actions usable', async ({ page }, info) => {
   test.skip(!info.project.name.startsWith('desktop'), 'PC experiment')
   const catalog = JSON.parse(readFileSync('src/resources/study-illustrations.json', 'utf8'))
-  const failedId = catalog.find((entry: { word: string }) => entry.word === 'ability').sourceId
+  const failedId = catalog.find((entry: { word: string }) => entry.word === 'able').sourceId
   await page.route('**/images/word-atlas/*.webp', route => route.request().url().includes(failedId)
     ? route.fulfill({ status: 404, body: '' }) : route.continue())
   await open(page, info.project.name.endsWith('dark'), 'touch', 'exposure')
@@ -154,8 +157,8 @@ test('a failed image removes its frame and leaves meaning and learning actions u
   await expect(card.locator('[data-dictionary-senses]')).toBeVisible()
   await card.getByRole('button', { name: '继续学习', exact: true }).click()
   await expect(card.locator('[data-mobile-feedback]')).toBeVisible()
-  await expect(card).toHaveAttribute('data-mobile-word', 'able')
-  await expect(page.locator(figure)).toHaveAttribute('data-illustration-word', 'able')
+  await expect(card).toHaveAttribute('data-mobile-word', 'bakery')
+  await expect(page.locator(figure)).toHaveAttribute('data-illustration-word', 'bakery')
   await expect.poll(() => page.locator(figure + ' img').evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(512)
 })
 
@@ -169,8 +172,11 @@ test('PC touch dictation shows a scene with a masked word and keeps the submit a
   await expect(page.locator(figure)).toBeVisible()
   await expect(page.locator(figure + ' img')).toHaveAttribute('alt', '单词场景插画')
   await expect(card.getByRole('heading', { name: '单词已隐藏', exact: true })).toBeVisible()
-  await expect(card.locator('.mobile-practice-word')).not.toHaveText('ability')
+  await expect(card.locator('.mobile-practice-word')).not.toHaveText('able')
   await expect(card.locator('[data-dictionary-details]')).toHaveCount(0)
+  await expect(card.locator('[data-syllabus-examples]')).toHaveCount(0)
+  await expect(card.locator('[data-mobile-example-slot]')).toHaveAttribute('data-study-example-source', 'daily')
+  await expect(card.locator('[data-mobile-example]')).toHaveText('I am finally ____ to swim across the pool.')
   await expect(card.locator('.mobile-practice-primary')).toBeInViewport({ ratio: 1 })
   await expect(card.locator('[data-dictionary-senses]')).toBeInViewport({ ratio: 1 })
   await auditVisibleUI(page, info, 'pc-image-dictation-touch')
@@ -193,15 +199,48 @@ test('Typing dictation shows a neutral scene cue while English letters remain hi
   const word = page.locator('[data-typing-word]')
   await expect(word).toHaveAttribute('data-typing-word', 'ability')
   await expect(word).not.toHaveText('ability')
-  await expect(page.locator(figure)).toBeVisible()
-  await expect(page.locator(figure + ' img')).toHaveAttribute('alt', '单词场景插画')
-  await expect(page.locator('[data-dictionary-senses]')).toHaveText(words[0].content!.senses.map(entry => entry.text).join(''))
+  await expect(page.locator(figure)).toHaveCount(0)
+  await expect(page.locator('[data-dictionary-senses]')).toHaveText(dictionary.find(word => word.name === 'ability')!.content!.senses.map(entry => entry.text).join(''))
   await expect(page.locator('.focus-translation')).not.toContainText('ability')
   await expect(page.locator('[data-typing-example-en]')).not.toContainText('ability')
   await expect(page.locator('[data-dictionary-details]')).toHaveCount(0)
+  await expect(page.locator('[data-syllabus-examples]')).toHaveCount(0)
+  await expect(page.locator('[data-typing-example]')).toHaveAttribute('data-study-example-source', 'daily')
   await auditVisibleUI(page, info, 'pc-image-dictation-typing')
   await page.screenshot({ path: info.outputPath('pc-image-dictation-typing.png') })
   await page.keyboard.type('ability')
   await expect(word).toHaveAttribute('data-typing-word', 'able')
   await expect(page.locator(figure)).toHaveAttribute('data-illustration-word', 'able')
 })
+
+for (const mode of ['keyboard', 'touch'] as const) {
+  test('PC ' + mode + ' retains every original example beside an independently reviewed daily supplement', async ({ page }, info) => {
+    test.skip(!info.project.name.startsWith('desktop'), 'PC supplement presentation')
+    const water = dictionary.find(word => word.name === 'water')!
+    await open(page, info.project.name.endsWith('dark'), mode, 'exposure', false, [water, words[0]])
+    const anchor = page.locator(mode === 'keyboard' ? '.focus-word-stack' : '[data-desktop-tap-practice]')
+    const daily = anchor.locator('[data-study-example-source]')
+    await expect(daily).toHaveAttribute('data-study-example-source', 'daily')
+    await expect(daily).toContainText('日常例句')
+    await expect(daily).toContainText('the plants before we leave today.')
+    // Water illustrates drinking, while the reviewed sentence is watering:
+    // sentence quality must not accidentally enable the old picture.
+    await expect(page.locator(figure)).toHaveCount(0)
+    const before = await readReviewModeInfo(page)
+    const originals = anchor.locator('[data-syllabus-examples]')
+    await expect(originals.locator('summary')).toHaveText('考纲例句（2）')
+    await originals.locator('summary').click()
+    await expect(originals.locator('[data-syllabus-example]')).toHaveCount(water.example!.length)
+    for (const [index, example] of water.example!.entries()) {
+      const item = originals.locator('[data-syllabus-example]').nth(index)
+      await item.scrollIntoViewIfNeeded()
+      await expect(item).toContainText(example.en)
+      await expect(item).toContainText(example.cn)
+      await expect(item).toBeInViewport({ ratio: 1 })
+    }
+    if (mode === 'touch') await expect(anchor.getByRole('button', { name: '继续学习', exact: true })).toBeInViewport({ ratio: 1 })
+    expect(await readReviewModeInfo(page)).toEqual(before)
+    await auditVisibleUI(page, info, 'daily-and-syllabus-' + mode)
+    await page.screenshot({ path: info.outputPath('daily-and-syllabus-' + mode + '.png') })
+  })
+}

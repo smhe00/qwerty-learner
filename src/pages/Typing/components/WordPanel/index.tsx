@@ -51,7 +51,7 @@ import {
   wordDictationConfigAtom,
 } from '@/store'
 import type { Word, WordWithIndex } from '@/typings'
-import { getFirstValidDictionaryExample } from '@/utils/dictionaryExample'
+import { getStudyPresentation } from '@/resources/studyExamples'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -713,7 +713,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
     : shouldShowTranslation
 
   const hasValidExample = Boolean(
-    currentWord && getFirstValidDictionaryExample(currentWord),
+    currentWord && getStudyPresentation(currentDictId, currentWord, !mobile).example,
   )
   const isAcquisitionRecall =
     currentLearnItemKind === 'acquisition' &&

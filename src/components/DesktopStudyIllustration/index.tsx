@@ -1,5 +1,5 @@
 import './desktop-study-illustration.css'
-import { getStudyIllustration } from '@/resources/studyIllustrations'
+import { getStudyPresentation } from '@/resources/studyExamples'
 import type { Word } from '@/typings'
 import type { ReactNode } from 'react'
 import { useLayoutEffect, useRef, useState } from 'react'
@@ -17,7 +17,7 @@ export default function DesktopStudyIllustration({ word, dictId, visible, answer
   const body = useRef<HTMLDivElement>(null)
   const [layout, setLayout] = useState<Layout | null>(null)
   const [failedSource, setFailedSource] = useState<string | null>(null)
-  const illustration = getStudyIllustration(dictId, word)
+  const illustration = getStudyPresentation(dictId, word).illustration
   const source = illustration
     ? (REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + illustration.path
     : undefined

@@ -1,0 +1,1759 @@
+{
+  "reviewer": "Codex linguistic and visual screening; not independent human certification",
+  "reviewSet": "219 daily-life headwords across multiple topics; unreviewed words remain disabled",
+  "imageCriterion": "Core object/action/place compatible. Invisible time, frequency, kinship and preceding events are not certified. Descriptions record limits.",
+  "entries": [
+    {
+      "word": "ability",
+      "sourceMeaning": "n. 能力，才能，本领",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence is bicycle repair; image is a child riding a bicycle."
+    },
+    {
+      "word": "able",
+      "sourceMeaning": "adj. 能够的；有能力的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Child swimming across a pool."
+    },
+    {
+      "word": "bakery",
+      "sourceMeaning": "n. 面包店",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Baker serving bread at a bakery counter."
+    },
+    {
+      "word": "apple",
+      "sourceMeaning": "n. 苹果",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "banana",
+      "sourceMeaning": "n. 香蕉",
+      "quality": "deferred",
+      "qualityReason": "Natural English, but cereal adds avoidable unfamiliar vocabulary relative to the very simple syllabus sentence; defer this supplement.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "orange",
+      "sourceMeaning": "n. 橘子， 橙； 橙色",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "bread",
+      "sourceMeaning": "n. 面包",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Fresh loaf and sliced bread cooling by a window."
+    },
+    {
+      "word": "breakfast",
+      "sourceMeaning": "n. 早餐",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A child eating a morning meal; later bus journey is outside the illustrated moment."
+    },
+    {
+      "word": "lunch",
+      "sourceMeaning": "n. 午餐，午饭",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "dinner",
+      "sourceMeaning": "n. 正餐",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "milk",
+      "sourceMeaning": "n. 牛奶",
+      "quality": "deferred",
+      "qualityReason": "Natural English, but cereal adds avoidable unfamiliar vocabulary relative to the syllabus examples; defer this supplement.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "water",
+      "sourceMeaning": "n. 水",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence is watering plants; image is drinking water."
+    },
+    {
+      "word": "tea",
+      "sourceMeaning": "n. 茶；茶叶",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Tea being poured from a teapot into a cup."
+    },
+    {
+      "word": "coffee",
+      "sourceMeaning": "n. 咖啡",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Milk being added to a cup of coffee."
+    },
+    {
+      "word": "juice",
+      "sourceMeaning": "n. 果汁",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "An orange being squeezed into a glass."
+    },
+    {
+      "word": "rice",
+      "sourceMeaning": "n. 稻；米；米饭",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "meat",
+      "sourceMeaning": "n. 肉",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "fish",
+      "sourceMeaning": "n. 鱼；鱼肉",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "egg",
+      "sourceMeaning": "n. 蛋；卵",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "chicken",
+      "sourceMeaning": "n. 鸡；鸡肉",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Chickens scratching soil beside a vegetable garden."
+    },
+    {
+      "word": "cake",
+      "sourceMeaning": "n. 蛋糕；糕点；饼",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "cheese",
+      "sourceMeaning": "n. 奶酪；干酪",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "fruit",
+      "sourceMeaning": "n. 水果； 果实",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "vegetable",
+      "sourceMeaning": "n. 蔬菜",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "food",
+      "sourceMeaning": "n. 食物，食品",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "cook",
+      "sourceMeaning": "n. 厨师，炊事员",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person cooking soup in a kitchen."
+    },
+    {
+      "word": "kitchen",
+      "sourceMeaning": "n. 厨房",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "restaurant",
+      "sourceMeaning": "n. 饭馆；饭店；餐厅",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "menu",
+      "sourceMeaning": "n. 菜单",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "hungry",
+      "sourceMeaning": "adj. 饥饿的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A hungry child holding their stomach before a meal; preceding walk is outside the scene."
+    },
+    {
+      "word": "thirsty",
+      "sourceMeaning": "adj. 口渴的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "eat",
+      "sourceMeaning": "v. 吃",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "drink",
+      "sourceMeaning": "v. 喝，饮",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "buy",
+      "sourceMeaning": "v. 买",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Buying bread from a baker."
+    },
+    {
+      "word": "sell",
+      "sourceMeaning": "v. 卖；销售",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A bread seller serving a customer at a market stall."
+    },
+    {
+      "word": "shop",
+      "sourceMeaning": "n. 店铺",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A small bread shop."
+    },
+    {
+      "word": "market",
+      "sourceMeaning": "n. 市场；集市",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "supermarket",
+      "sourceMeaning": "n. 超级市场",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A shopper with a trolley in a supermarket; individual purchases are not certified."
+    },
+    {
+      "word": "money",
+      "sourceMeaning": "n. 钱；货币",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "price",
+      "sourceMeaning": "n. 价格，价钱",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "cheap",
+      "sourceMeaning": "adj. 便宜的；廉价的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "expensive",
+      "sourceMeaning": "adj. 昂贵的； 价格高的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "pay",
+      "sourceMeaning": "v. 付钱，给⋯⋯报酬；（与某些名词结合使用，表示将要做或付出某事物）",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "book",
+      "sourceMeaning": "n. 书；本子",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "library",
+      "sourceMeaning": "n. 图书馆， 图书室",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Borrowing books at a library counter."
+    },
+    {
+      "word": "read",
+      "sourceMeaning": "v. 读； 朗读",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Reading a book in an armchair; bedtime is not visually certified."
+    },
+    {
+      "word": "write",
+      "sourceMeaning": "writer n.作家",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "pen",
+      "sourceMeaning": "n. 钢笔；笔",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "pencil",
+      "sourceMeaning": "n. 铅笔",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A pencil sketch of a sleeping cat."
+    },
+    {
+      "word": "paper",
+      "sourceMeaning": "n. （不可数）纸；（可数）报纸；考卷；文件",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "notebook",
+      "sourceMeaning": "n. 笔记本",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "desk",
+      "sourceMeaning": "n. 书桌，写字台",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "chair",
+      "sourceMeaning": "n. 椅子",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person moving a chair by a window."
+    },
+    {
+      "word": "school",
+      "sourceMeaning": "n. 学校",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "classroom",
+      "sourceMeaning": "n. 教室",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Students with books in a sunlit classroom."
+    },
+    {
+      "word": "student",
+      "sourceMeaning": "n. 学生",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "teacher",
+      "sourceMeaning": "n. 教师",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A teacher showing pupils a plant during an outdoor class."
+    },
+    {
+      "word": "learn",
+      "sourceMeaning": "v. 学习；学会",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "study",
+      "sourceMeaning": "v. 学习；研究",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "homework",
+      "sourceMeaning": "n. （学生的）家庭作业",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "lesson",
+      "sourceMeaning": "n. 课； 功课；教训",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A swimming lesson with an instructor beside a pool."
+    },
+    {
+      "word": "exam",
+      "sourceMeaning": "n. （笔头、口头或操作）考试， 测   试；检查",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Pupils taking a written school exam; subject/date are not visually certified."
+    },
+    {
+      "word": "test",
+      "sourceMeaning": "v. &n.测试；检测；考查；试验",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A teacher reading while pupils write a school test; date is not visually certified."
+    },
+    {
+      "word": "question",
+      "sourceMeaning": "n. 问题",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A pupil raising a hand in class to ask the teacher."
+    },
+    {
+      "word": "answer",
+      "sourceMeaning": "n. 回答； 答复； 答案； 回（信）",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "English",
+      "sourceMeaning": "adj. 英国的；英国人的；英语的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "language",
+      "sourceMeaning": "n. 语言",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "speak",
+      "sourceMeaning": "v. 说，讲；谈话；发言",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "listen",
+      "sourceMeaning": "v. 听；仔细听",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "hear",
+      "sourceMeaning": "hearing n.听力；听觉",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person hearing a bird singing outside the bedroom window."
+    },
+    {
+      "word": "talk",
+      "sourceMeaning": "n. &v.谈话；讲话；演讲；交谈",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "say",
+      "sourceMeaning": "v. 说；讲",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "tell",
+      "sourceMeaning": "v. 告诉；讲述；吩咐",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A child telling an adult about their day; exact narrated events are not certified."
+    },
+    {
+      "word": "sing",
+      "sourceMeaning": "v. 唱，唱歌",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "music",
+      "sourceMeaning": "n. 音乐；乐曲",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "piano",
+      "sourceMeaning": "n. 钢琴",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A child practising the piano at home; time and family relationship are not certified."
+    },
+    {
+      "word": "guitar",
+      "sourceMeaning": "n. 吉他",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "violin",
+      "sourceMeaning": "n. 小提琴",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A young woman practising the violin; time and family relationship are not certified."
+    },
+    {
+      "word": "dance",
+      "sourceMeaning": "n. &v.跳舞",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "draw",
+      "sourceMeaning": "（drew drɔːn 绘画；绘制；拉，拖",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person sketching a sleeping cat."
+    },
+    {
+      "word": "picture",
+      "sourceMeaning": "n. 图片， 图画， 照片； 影片",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "photo",
+      "sourceMeaning": "n. 照片",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "camera",
+      "sourceMeaning": "n. 照相机；摄影机",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A photographer pointing a camera at a sleeping cat."
+    },
+    {
+      "word": "film",
+      "sourceMeaning": "n. 电影，影片；胶卷",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence specifies a funny film; image is a wildlife film."
+    },
+    {
+      "word": "cinema",
+      "sourceMeaning": "n. 电影院；电影",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "ticket",
+      "sourceMeaning": "n. 票;入场券",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "park",
+      "sourceMeaning": "n. 公园",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "People having a picnic under trees in a park."
+    },
+    {
+      "word": "garden",
+      "sourceMeaning": "n. 花园，果园，菜园",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "flower",
+      "sourceMeaning": "n. 花",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "tree",
+      "sourceMeaning": "n. 树",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A bird nest in a tree."
+    },
+    {
+      "word": "grass",
+      "sourceMeaning": "n. 草；草场；牧草",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "forest",
+      "sourceMeaning": "n. 森林； 林区",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A narrow walking path entering dense forest."
+    },
+    {
+      "word": "mountain",
+      "sourceMeaning": "n. 山； 高山； 山脉",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A snow-covered mountain; summer is not visually certified."
+    },
+    {
+      "word": "river",
+      "sourceMeaning": "n. 江，河",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Ducks swimming across a river."
+    },
+    {
+      "word": "lake",
+      "sourceMeaning": "n. 湖",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "People rowing a small boat on a lake."
+    },
+    {
+      "word": "sea",
+      "sourceMeaning": "n. 海，海洋",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Small boats sailing on the sea."
+    },
+    {
+      "word": "beach",
+      "sourceMeaning": "n. 海滨， 海滩",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "island",
+      "sourceMeaning": "n. 岛",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "People approaching an island in a small boat."
+    },
+    {
+      "word": "sky",
+      "sourceMeaning": "n. 天； 天空",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence specifies an orange sky; image sky is blue."
+    },
+    {
+      "word": "sun",
+      "sourceMeaning": "n. 太阳；阳光",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Sunlight over a beach; arrival time is not visually certified."
+    },
+    {
+      "word": "moon",
+      "sourceMeaning": "n. 月球；月亮",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A moon above trees; rising motion and exact home location are not certified."
+    },
+    {
+      "word": "star",
+      "sourceMeaning": "n. 星；恒星；明星",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "cloud",
+      "sourceMeaning": "n. 云； 云朵",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence specifies a dark cloud; image cloud is white."
+    },
+    {
+      "word": "rain",
+      "sourceMeaning": "n. 雨，雨水",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence keeps people indoors; image person is outdoors in rain."
+    },
+    {
+      "word": "snow",
+      "sourceMeaning": "n. 雪",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Fresh snow covering a garden by a house; waking time is not certified."
+    },
+    {
+      "word": "wind",
+      "sourceMeaning": "n. 风",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A gust of wind blowing a hat away."
+    },
+    {
+      "word": "weather",
+      "sourceMeaning": "n. 天气",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "hot",
+      "sourceMeaning": "adj. 热的；辣的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person carefully blowing on hot soup."
+    },
+    {
+      "word": "cold",
+      "sourceMeaning": "adj. 冷的，寒冷的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person wearing winter gloves in cold weather."
+    },
+    {
+      "word": "warm",
+      "sourceMeaning": "adj. 暖和的；热情的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person wrapped in a blanket keeping warm."
+    },
+    {
+      "word": "cool",
+      "sourceMeaning": "adj. 凉的，凉爽的；酷的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "spring",
+      "sourceMeaning": "n. 春天，春季；泉水；弹簧",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Planting flowers in a spring garden."
+    },
+    {
+      "word": "summer",
+      "sourceMeaning": "n. 夏天，夏季",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "autumn",
+      "sourceMeaning": "n. 秋天，秋季",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "winter",
+      "sourceMeaning": "n. 冬天，冬季",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "People wearing thick coats outdoors in winter."
+    },
+    {
+      "word": "swim",
+      "sourceMeaning": "v. & n. 游泳",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence specifies an indoor pool; image pool is outdoors."
+    },
+    {
+      "word": "pool",
+      "sourceMeaning": "n. 水塘；水池；水坑",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "People swimming in an outdoor pool."
+    },
+    {
+      "word": "bicycle",
+      "sourceMeaning": "n. 自行车",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "bus",
+      "sourceMeaning": "n. 公共汽车",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Passengers boarding a bus; last service/concert are outside the scene."
+    },
+    {
+      "word": "car",
+      "sourceMeaning": "n. 小汽车",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "train",
+      "sourceMeaning": "n. 火车",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Passengers boarding a train; last service/dinner are outside the scene."
+    },
+    {
+      "word": "plane",
+      "sourceMeaning": "n. 飞机",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence is landing in approaching rain; image shows an airborne aircraft in clear weather."
+    },
+    {
+      "word": "ship",
+      "sourceMeaning": "n. 船；轮船",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A large ship entering a harbour."
+    },
+    {
+      "word": "boat",
+      "sourceMeaning": "n. 小船，小舟",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "People boating on a lake."
+    },
+    {
+      "word": "travel",
+      "sourceMeaning": "n. & v.旅行",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Travellers boarding a train; destination/family visit are not visually certified."
+    },
+    {
+      "word": "trip",
+      "sourceMeaning": "n. （尤指短程往返的）旅行；旅程；旅游； 出行",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A relaxed family outing on the coast."
+    },
+    {
+      "word": "holiday",
+      "sourceMeaning": "n. 假日；假期",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "hotel",
+      "sourceMeaning": "n. 旅馆，宾馆",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "airport",
+      "sourceMeaning": "n. 机场",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "station",
+      "sourceMeaning": "n. 车站；（服务）台；电台",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Travellers carrying suitcases on a station platform."
+    },
+    {
+      "word": "street",
+      "sourceMeaning": "n. 街，街道",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Pedestrians crossing a street; exact destination is outside the moment."
+    },
+    {
+      "word": "road",
+      "sourceMeaning": "n. 路，道路",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "bridge",
+      "sourceMeaning": "n. 桥",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence specifies a wooden bridge; image is a stone arch bridge."
+    },
+    {
+      "word": "house",
+      "sourceMeaning": "n. 房子；住宅；家",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "home",
+      "sourceMeaning": "n. 家",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "room",
+      "sourceMeaning": "n. 房间，室；空间；地方",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "bedroom",
+      "sourceMeaning": "n. 卧室",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A bedroom receiving morning sunlight."
+    },
+    {
+      "word": "bathroom",
+      "sourceMeaning": "n. 浴室； 盥洗室； 厕所",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A clean towel beside a bathroom sink."
+    },
+    {
+      "word": "window",
+      "sourceMeaning": "n. 窗户；橱窗",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person opening a window for fresh air."
+    },
+    {
+      "word": "door",
+      "sourceMeaning": "n. 门；通道",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "floor",
+      "sourceMeaning": "n. 地面；地板；（楼房的）层",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "wall",
+      "sourceMeaning": "n. 墙",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "roof",
+      "sourceMeaning": "n. 屋顶；顶部",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "table",
+      "sourceMeaning": "n. 桌子；表格",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Family gathered around a table sharing food, including bread."
+    },
+    {
+      "word": "bed",
+      "sourceMeaning": "n. 床",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A cat curled up asleep on a bed."
+    },
+    {
+      "word": "sofa",
+      "sourceMeaning": "n. 长沙发",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "People curled up on a sofa; previous dinner is not visually certified."
+    },
+    {
+      "word": "clock",
+      "sourceMeaning": "n. 钟",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "watch",
+      "sourceMeaning": "n. 手表，表",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "People watching ducks on a pond."
+    },
+    {
+      "word": "computer",
+      "sourceMeaning": "n. 电脑",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "phone",
+      "sourceMeaning": "n. 电话；电话机",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person answering a phone beside washing-up in a kitchen."
+    },
+    {
+      "word": "television",
+      "sourceMeaning": "n. 电视",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "People watching a wildlife programme on television."
+    },
+    {
+      "word": "radio",
+      "sourceMeaning": "n. 无线电（广播）；收音机",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A small radio on a kitchen shelf/counter."
+    },
+    {
+      "word": "mouse",
+      "sourceMeaning": "n. 老鼠； （计算机）鼠标",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A small mouse beside a cupboard; breakfast time is not visually certified."
+    },
+    {
+      "word": "keyboard",
+      "sourceMeaning": "n. （计算机或打字机的）键盘",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "screen",
+      "sourceMeaning": "n. 银幕，屏幕；荧光屏",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence is wiping a laptop screen; image is a television."
+    },
+    {
+      "word": "letter",
+      "sourceMeaning": "n. 信；字母",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person opening and reading a delivered letter; sender/date are not visually certified."
+    },
+    {
+      "word": "email",
+      "sourceMeaning": "n. 电子邮件",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "message",
+      "sourceMeaning": "n. 消息；音信",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "friend",
+      "sourceMeaning": "n. 朋友",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "family",
+      "sourceMeaning": "n. 家庭； 家族；家人",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "mother",
+      "sourceMeaning": "n. 母亲",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A mother teaching a child to ride a bicycle."
+    },
+    {
+      "word": "father",
+      "sourceMeaning": "n. 父亲",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A father helping his child learn to ride a bicycle."
+    },
+    {
+      "word": "parent",
+      "sourceMeaning": "n. 父（母）, (parents)双亲",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "sister",
+      "sourceMeaning": "n. 姐； 妹",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "brother",
+      "sourceMeaning": "n. 兄； 弟",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "child",
+      "sourceMeaning": "n. 孩子， 儿童",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "boy",
+      "sourceMeaning": "n. 男孩",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "girl",
+      "sourceMeaning": "n. 女孩",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "baby",
+      "sourceMeaning": "n. 婴儿",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "woman",
+      "sourceMeaning": "n. 妇女；女人",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "man",
+      "sourceMeaning": "n. 成年男人；人；人类",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "people",
+      "sourceMeaning": "n. 人；人们；人民",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "doctor",
+      "sourceMeaning": "n. 医生",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A doctor listening to and examining a patient during a consultation."
+    },
+    {
+      "word": "nurse",
+      "sourceMeaning": "n. 护士；保育员",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A nurse bandaging a patient wrist."
+    },
+    {
+      "word": "hospital",
+      "sourceMeaning": "n. 医院",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Nurses working in a hospital ward."
+    },
+    {
+      "word": "medicine",
+      "sourceMeaning": "n. 药；医学",
+      "quality": "deferred",
+      "qualityReason": "Pharmacist adds unnecessary lexical difficulty relative to the existing medicine examples; defer this supplement.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "health",
+      "sourceMeaning": "n. 健康；身体（或精神）状况",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "healthy",
+      "sourceMeaning": "adj. 健康的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence is about a cat; image is a woman exercising."
+    },
+    {
+      "word": "ill",
+      "sourceMeaning": "adj. 有病的； 不健康的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "An unwell person resting in bed; preceding bus trip is outside the scene."
+    },
+    {
+      "word": "sick",
+      "sourceMeaning": "adj. 有病的，患病的；（想）呕吐的，恶心的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "An unwell child staying in bed."
+    },
+    {
+      "word": "headache",
+      "sourceMeaning": "n. 头痛",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person holding their head in discomfort."
+    },
+    {
+      "word": "tooth",
+      "sourceMeaning": "n. 牙齿",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "brush",
+      "sourceMeaning": "v. （用刷子）刷净，刷亮，刷平顺； 擦",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A brush cleaning mud from a boot; noun sense already appears in the original examples."
+    },
+    {
+      "word": "wash",
+      "sourceMeaning": "v. &n.洗涤，洗",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person washing their hands at a sink."
+    },
+    {
+      "word": "clean",
+      "sourceMeaning": "v. 弄干净，打扫",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "dirty",
+      "sourceMeaning": "adj. 脏的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Dirty boots left outside a kitchen door."
+    },
+    {
+      "word": "dangerous",
+      "sourceMeaning": "adj. 危险的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence is a broken step; image is a broken bridge."
+    },
+    {
+      "word": "safe",
+      "sourceMeaning": "adj. 安全的，平安的",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence locks a bicycle in a garage; image is outdoor cycling."
+    },
+    {
+      "word": "fire",
+      "sourceMeaning": "n. 火； 火炉； 火灾",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "People warming their hands beside a fire."
+    },
+    {
+      "word": "police",
+      "sourceMeaning": "n. 警方",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "help",
+      "sourceMeaning": "v. &n.帮助，帮忙",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "job",
+      "sourceMeaning": "n. 工作",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person working at a library desk."
+    },
+    {
+      "word": "office",
+      "sourceMeaning": "n. 办公室；办公楼",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "factory",
+      "sourceMeaning": "n. 工厂",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Workers making bicycles in a factory."
+    },
+    {
+      "word": "farm",
+      "sourceMeaning": "n. 农场，农庄",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "farmer",
+      "sourceMeaning": "n. 农民，农夫",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A farmer feeding chickens outdoors."
+    },
+    {
+      "word": "animal",
+      "sourceMeaning": "n. 动物",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Farm animals being observed; exact observer relationship is not visually certified."
+    },
+    {
+      "word": "cat",
+      "sourceMeaning": "n. 猫",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "dog",
+      "sourceMeaning": "n. 狗",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "bird",
+      "sourceMeaning": "n. 鸟",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "horse",
+      "sourceMeaning": "n. 马",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "cow",
+      "sourceMeaning": "n. 母牛",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence specifies a brown cow; image cow is black and white."
+    },
+    {
+      "word": "sheep",
+      "sourceMeaning": "n. （绵）羊",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "pig",
+      "sourceMeaning": "n. 猪",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "rabbit",
+      "sourceMeaning": "n. 兔子",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence specifies a white hopping rabbit; image rabbit is brown and seated."
+    },
+    {
+      "word": "duck",
+      "sourceMeaning": "n. 鸭子",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A duck swimming with ducklings."
+    },
+    {
+      "word": "elephant",
+      "sourceMeaning": "n. 大象",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "lion",
+      "sourceMeaning": "n. 狮子",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Lions resting in the shade of a tree."
+    },
+    {
+      "word": "tiger",
+      "sourceMeaning": "n. 老虎",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "panda",
+      "sourceMeaning": "n. 熊猫",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A panda sitting and chewing bamboo."
+    },
+    {
+      "word": "monkey",
+      "sourceMeaning": "n. 猴子",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A monkey swinging between branches."
+    },
+    {
+      "word": "zebra",
+      "sourceMeaning": "n. 斑马",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A zebra standing at a watering hole."
+    },
+    {
+      "word": "device",
+      "sourceMeaning": "n. 仪器",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence is a step tracker; image device waters a plant."
+    },
+    {
+      "word": "less",
+      "sourceMeaning": "少于 多于",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "Different amounts of sugar being added to tea."
+    },
+    {
+      "word": "remember",
+      "sourceMeaning": "v. 记得； 想起",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence recalls a kitchen smell; image shows looking at old photographs."
+    },
+    {
+      "word": "borrow",
+      "sourceMeaning": "v. （向别人）借用； 借",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A person borrowing an umbrella at a doorway."
+    },
+    {
+      "word": "allow",
+      "sourceMeaning": "v. 允许， 准许",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "matched",
+      "imageReason": "A library visitor being permitted to borrow books; exact quota is not visually certified."
+    },
+    {
+      "word": "design",
+      "sourceMeaning": "v. & n.设计；策划",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "The picture does not establish the sentence’s central action, object or place closely enough; retain the asset without pairing it."
+    },
+    {
+      "word": "environment",
+      "sourceMeaning": "n. 环境",
+      "quality": "accepted",
+      "qualityReason": "Compared with the original examples: natural grammatical daily English, faithful Chinese translation, an existing syllabus usage, and suitable junior-school context. Supplements rather than replaces exam constructions.",
+      "image": "not-paired",
+      "imageReason": "Sentence is cycling to school; image is a natural landscape without cyclists."
+    }
+  ]
+}

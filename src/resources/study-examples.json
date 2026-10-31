@@ -1,0 +1,4533 @@
+[
+  {
+    "word": "ability",
+    "sourceMeaning": "n. 能力，才能，本领",
+    "syllabusExamples": [
+      {
+        "en": "Sue has the ability to succeed in business.",
+        "cn": "苏有能力在商业上取得成功。",
+        "start": 12,
+        "end": 19
+      }
+    ],
+    "example": {
+      "en": "Her ability to fix bicycles impressed all her friends.",
+      "cn": "她修自行车的本领让朋友们都很佩服。",
+      "start": 4,
+      "end": 11
+    }
+  },
+  {
+    "word": "able",
+    "sourceMeaning": "adj. 能够的；有能力的",
+    "syllabusExamples": [
+      {
+        "en": "Leave the reference books behind, or you won't be able to think by yourself.",
+        "cn": "把参考书放一边，否则你将无法独立思考。",
+        "start": 50,
+        "end": 54
+      }
+    ],
+    "example": {
+      "en": "I am finally able to swim across the pool.",
+      "cn": "我终于能够游到泳池的另一端了。",
+      "start": 13,
+      "end": 17
+    },
+    "illustrationId": "able"
+  },
+  {
+    "word": "airport",
+    "sourceMeaning": "n. 机场",
+    "syllabusExamples": [
+      {
+        "en": "As soon as you come back from the airport, please give me a ring.",
+        "cn": "你一从机场回来，就请给我打个电话。",
+        "start": 34,
+        "end": 41
+      }
+    ],
+    "example": {
+      "en": "We arrived at the airport before the sun rose.",
+      "cn": "太阳还没升起，我们就到了机场。",
+      "start": 18,
+      "end": 25
+    }
+  },
+  {
+    "word": "allow",
+    "sourceMeaning": "v. 允许， 准许",
+    "syllabusExamples": [
+      {
+        "en": "Hurry up! Once the concert starts, nobody is allowed to enter the concert hall.",
+        "cn": "快点！一旦音乐会开始，就不允许任何人进入音乐厅了。",
+        "start": 45,
+        "end": 52
+      },
+      {
+        "en": "Students aren't allowed to smoke because smoking is harmful to their health.",
+        "cn": "",
+        "start": 16,
+        "end": 23
+      }
+    ],
+    "example": {
+      "en": "The library allows visitors to borrow five books at once.",
+      "cn": "图书馆允许访客一次借五本书。",
+      "start": 12,
+      "end": 18
+    },
+    "illustrationId": "allow"
+  },
+  {
+    "word": "animal",
+    "sourceMeaning": "n. 动物",
+    "syllabusExamples": [
+      {
+        "en": "Jim grew up with many animals at home and knows well how to take care of pets.",
+        "cn": "吉姆自小在家里与小动物们相伴成长，深知如何照顾宠物。",
+        "start": 22,
+        "end": 29
+      }
+    ],
+    "example": {
+      "en": "My sister loves watching animals at the local farm.",
+      "cn": "我妹妹喜欢在当地农场看动物。",
+      "start": 25,
+      "end": 32
+    },
+    "illustrationId": "animal"
+  },
+  {
+    "word": "answer",
+    "sourceMeaning": "n. 回答； 答复； 答案； 回（信）",
+    "syllabusExamples": [
+      {
+        "en": "The maths teacher wonders if anyone knows the answer to the question.",
+        "cn": "数学老师想知道是否有人知道这个问题的答案。",
+        "start": 46,
+        "end": 52
+      },
+      {
+        "en": "She didn't answer my letter.",
+        "cn": "她没有给我回信。",
+        "start": 11,
+        "end": 17
+      },
+      {
+        "en": "Last night I didn't answer your phone because I was seeing the film Dune.",
+        "cn": "昨晚我没有接听你的电话，因为我正在看电影《沙丘》。",
+        "start": 20,
+        "end": 26
+      }
+    ],
+    "example": {
+      "en": "I asked the price, but nobody gave an answer.",
+      "cn": "我问了价格，却没有人回答。",
+      "start": 38,
+      "end": 44
+    }
+  },
+  {
+    "word": "apple",
+    "sourceMeaning": "n. 苹果",
+    "syllabusExamples": [
+      {
+        "en": "Please help yourself to the apples and oranges on the table, Mary.",
+        "cn": "玛丽，桌上的苹果和橘子请随便吃。",
+        "start": 28,
+        "end": 34
+      },
+      {
+        "en": "An apple a day keeps the doctor away.",
+        "cn": "一天一苹果，医生远离我。",
+        "start": 3,
+        "end": 8
+      }
+    ],
+    "example": {
+      "en": "I packed an apple and a sandwich for lunch.",
+      "cn": "我装了一个苹果和一个三明治当午餐。",
+      "start": 12,
+      "end": 17
+    }
+  },
+  {
+    "word": "autumn",
+    "sourceMeaning": "n. 秋天，秋季",
+    "syllabusExamples": [
+      {
+        "en": "Leaves fall off the trees in autumn.",
+        "cn": "秋天，叶子从树上掉落下来。",
+        "start": 29,
+        "end": 35
+      }
+    ],
+    "example": {
+      "en": "We collect fallen leaves in the park every autumn.",
+      "cn": "我们每年秋天都在公园里收集落叶。",
+      "start": 43,
+      "end": 49
+    }
+  },
+  {
+    "word": "baby",
+    "sourceMeaning": "n. 婴儿",
+    "syllabusExamples": [
+      {
+        "en": "Please walk as gently as possible because her two babies are sleeping in the room.",
+        "cn": "走路时请尽量轻一点，因为她的两个孩子正在房间里睡觉。",
+        "start": 50,
+        "end": 56
+      }
+    ],
+    "example": {
+      "en": "The baby fell asleep while her father sang softly.",
+      "cn": "爸爸轻声唱歌时，宝宝睡着了。",
+      "start": 4,
+      "end": 8
+    }
+  },
+  {
+    "word": "bakery",
+    "sourceMeaning": "n. 面包店",
+    "syllabusExamples": [
+      {
+        "en": "This bakery is big.",
+        "cn": "这家面包店很大。",
+        "start": 5,
+        "end": 11
+      }
+    ],
+    "example": {
+      "en": "The bakery near our house sells warm bread every morning.",
+      "cn": "我们家附近的面包店每天早上都卖热乎乎的面包。",
+      "start": 4,
+      "end": 10
+    },
+    "illustrationId": "bakery"
+  },
+  {
+    "word": "bathroom",
+    "sourceMeaning": "n. 浴室； 盥洗室； 厕所",
+    "syllabusExamples": [
+      {
+        "en": "I like my bathroom.",
+        "cn": "我喜欢我的浴室。",
+        "start": 10,
+        "end": 18
+      }
+    ],
+    "example": {
+      "en": "She hung a clean towel beside the bathroom sink.",
+      "cn": "她在浴室洗手池旁挂了一条干净毛巾。",
+      "start": 34,
+      "end": 42
+    },
+    "illustrationId": "bathroom"
+  },
+  {
+    "word": "beach",
+    "sourceMeaning": "n. 海滨， 海滩",
+    "syllabusExamples": [
+      {
+        "en": "What a sunny day it is today! Shall we have a picnic on the beach?",
+        "cn": "今天的天气多么晴朗啊！我们去海滩野餐好吗？",
+        "start": 60,
+        "end": 65
+      }
+    ],
+    "example": {
+      "en": "We collected smooth stones on the beach after breakfast.",
+      "cn": "早餐后，我们在海滩上捡了些光滑的石头。",
+      "start": 34,
+      "end": 39
+    }
+  },
+  {
+    "word": "bed",
+    "sourceMeaning": "n. 床",
+    "syllabusExamples": [
+      {
+        "en": "Although Peter is five years old, he is learning to make the bed by himself.",
+        "cn": "尽管彼得才5岁，他正在学习自己整理床铺。",
+        "start": 61,
+        "end": 64
+      }
+    ],
+    "example": {
+      "en": "The cat curled up on my bed after lunch.",
+      "cn": "午饭后，猫蜷缩在我的床上。",
+      "start": 24,
+      "end": 27
+    },
+    "illustrationId": "bed"
+  },
+  {
+    "word": "bedroom",
+    "sourceMeaning": "n. 卧室",
+    "syllabusExamples": [
+      {
+        "en": "Frank and Mary switch on the bedroom computer in the morning because they want to get the latest news.",
+        "cn": "弗兰克和玛丽一早就打开卧室的电脑，因为他们想得到最新消息。",
+        "start": 29,
+        "end": 36
+      }
+    ],
+    "example": {
+      "en": "My bedroom gets plenty of sunlight in the morning.",
+      "cn": "我的卧室早晨阳光很充足。",
+      "start": 3,
+      "end": 10
+    },
+    "illustrationId": "bedroom"
+  },
+  {
+    "word": "bicycle",
+    "sourceMeaning": "n. 自行车",
+    "syllabusExamples": [
+      {
+        "en": "In my opinion, riding a bicycle will be more popular than driving a car in the future.",
+        "cn": "在我看来，未来骑自行车会比驾驶汽车更受欢迎。",
+        "start": 24,
+        "end": 31
+      }
+    ],
+    "example": {
+      "en": "I locked my bicycle outside the small bakery.",
+      "cn": "我把自行车锁在那家小面包店外面。",
+      "start": 12,
+      "end": 19
+    }
+  },
+  {
+    "word": "bird",
+    "sourceMeaning": "n. 鸟",
+    "syllabusExamples": [
+      {
+        "en": "There are miles of grassland with no people, just trees and birds.",
+        "cn": "绵延数英里的草原上没有人，只有树和鸟。",
+        "start": 60,
+        "end": 65
+      },
+      {
+        "en": "Clumsy birds have to start flying early.",
+        "cn": "笨鸟先飞。",
+        "start": 7,
+        "end": 12
+      }
+    ],
+    "example": {
+      "en": "A small bird built a nest above our window.",
+      "cn": "一只小鸟在我们窗户上方筑了巢。",
+      "start": 8,
+      "end": 12
+    }
+  },
+  {
+    "word": "boat",
+    "sourceMeaning": "n. 小船，小舟",
+    "syllabusExamples": [
+      {
+        "en": "He has his own boat.",
+        "cn": "他有他自己的小船。",
+        "start": 15,
+        "end": 19
+      },
+      {
+        "en": "They boated us across the bay.",
+        "cn": "他们划船把我们送过了海湾。",
+        "start": 5,
+        "end": 11
+      }
+    ],
+    "example": {
+      "en": "We hired a small boat and explored the lake.",
+      "cn": "我们租了一条小船，游览了湖面。",
+      "start": 17,
+      "end": 21
+    },
+    "illustrationId": "boat"
+  },
+  {
+    "word": "book",
+    "sourceMeaning": "n. 书；本子",
+    "syllabusExamples": [
+      {
+        "en": "On the eighth page of the book, there is an encouraging story.",
+        "cn": "在这本书的第8页，有一个令人鼓舞的故事。",
+        "start": 26,
+        "end": 30
+      },
+      {
+        "en": "—The musical Notre Dame de Paris is being staged in Shanghai Culture Square. Shall we book two tickets for the show?",
+        "cn": "",
+        "start": 86,
+        "end": 90
+      },
+      {
+        "en": "Books are our good teachers and wise friends.",
+        "cn": "书籍是我们的良师益友。",
+        "start": 0,
+        "end": 5
+      }
+    ],
+    "example": {
+      "en": "I left my book on the kitchen table.",
+      "cn": "我把书落在厨房的桌子上了。",
+      "start": 10,
+      "end": 14
+    }
+  },
+  {
+    "word": "borrow",
+    "sourceMeaning": "v. （向别人）借用； 借",
+    "syllabusExamples": [
+      {
+        "en": "This is a useful guidebook. I borrowed it from the school library.",
+        "cn": "这是一本有用的指导手册。我从学校图书馆借来的。",
+        "start": 30,
+        "end": 38
+      }
+    ],
+    "example": {
+      "en": "Could I borrow your umbrella until tomorrow morning?",
+      "cn": "我能借用一下你的伞，明天早上还吗？",
+      "start": 8,
+      "end": 14
+    },
+    "illustrationId": "borrow"
+  },
+  {
+    "word": "boy",
+    "sourceMeaning": "n. 男孩",
+    "syllabusExamples": [
+      {
+        "en": "The boy collected some fallen leaves and made a nice artwork.",
+        "cn": "这个男孩收集了一些落叶，做成了一件漂亮的艺术品。",
+        "start": 4,
+        "end": 7
+      }
+    ],
+    "example": {
+      "en": "The boy carefully carried his puppy across the puddle.",
+      "cn": "那个男孩小心地抱着小狗跨过水坑。",
+      "start": 4,
+      "end": 7
+    }
+  },
+  {
+    "word": "bread",
+    "sourceMeaning": "n. 面包",
+    "syllabusExamples": [
+      {
+        "en": "Mark isn't feeling well now as he had too much bread just now.",
+        "cn": "马克现在觉得不太舒服，因为他刚才吃了太多的面包。",
+        "start": 47,
+        "end": 52
+      }
+    ],
+    "example": {
+      "en": "Fresh bread was cooling beside the kitchen window.",
+      "cn": "刚出炉的面包放在厨房窗边晾凉。",
+      "start": 6,
+      "end": 11
+    },
+    "illustrationId": "bread"
+  },
+  {
+    "word": "breakfast",
+    "sourceMeaning": "n. 早餐",
+    "syllabusExamples": [
+      {
+        "en": "You had better let John buy milk and bread for breakfast himself. He's ten years old now.",
+        "cn": "早餐你最好让约翰自己去买牛奶和面包。他已经10岁了。",
+        "start": 47,
+        "end": 56
+      }
+    ],
+    "example": {
+      "en": "I usually have breakfast before taking the bus.",
+      "cn": "我通常吃完早餐再去坐公交车。",
+      "start": 15,
+      "end": 24
+    },
+    "illustrationId": "breakfast"
+  },
+  {
+    "word": "bridge",
+    "sourceMeaning": "n. 桥",
+    "syllabusExamples": [
+      {
+        "en": "The ancient Silk Road was a great success, like a bridge between East and West.",
+        "cn": "古代丝绸之路是一项伟大的成就，宛如连接东西方的桥梁。",
+        "start": 50,
+        "end": 56
+      },
+      {
+        "en": "The professor used humour to bridge the gap between complex theories and student understanding.",
+        "cn": "这位教授用幽默架起了桥梁，消除了复杂理论和学生理解间的隔阂。",
+        "start": 29,
+        "end": 35
+      }
+    ],
+    "example": {
+      "en": "We crossed the wooden bridge and entered the village.",
+      "cn": "我们走过木桥，进了村子。",
+      "start": 22,
+      "end": 28
+    }
+  },
+  {
+    "word": "brother",
+    "sourceMeaning": "n. 兄； 弟",
+    "syllabusExamples": [
+      {
+        "en": "My brother likes drawing very much and his dream is to become an architect.",
+        "cn": "我的弟弟非常喜欢画画，他的梦想是成为一名建筑师。",
+        "start": 3,
+        "end": 10
+      }
+    ],
+    "example": {
+      "en": "My younger brother borrowed my bicycle this morning.",
+      "cn": "我弟弟今天早上借用了我的自行车。",
+      "start": 11,
+      "end": 18
+    }
+  },
+  {
+    "word": "brush",
+    "sourceMeaning": "v. （用刷子）刷净，刷亮，刷平顺； 擦",
+    "syllabusExamples": [
+      {
+        "en": "Have you brushed your teeth?",
+        "cn": "你刷牙了吗？",
+        "start": 9,
+        "end": 16
+      },
+      {
+        "en": "I have a brush.",
+        "cn": "我有一把刷子。",
+        "start": 9,
+        "end": 14
+      }
+    ],
+    "example": {
+      "en": "Use a soft brush to clean your muddy shoes.",
+      "cn": "用软毛刷清理你沾满泥的鞋子。",
+      "start": 11,
+      "end": 16
+    },
+    "illustrationId": "brush"
+  },
+  {
+    "word": "bus",
+    "sourceMeaning": "n. 公共汽车",
+    "syllabusExamples": [
+      {
+        "en": "He asked the government to improve school bus safety.",
+        "cn": "他要求政府改善校车的安全。",
+        "start": 42,
+        "end": 45
+      }
+    ],
+    "example": {
+      "en": "We caught the last bus home after the concert.",
+      "cn": "音乐会结束后，我们赶上了回家的末班公交车。",
+      "start": 19,
+      "end": 22
+    },
+    "illustrationId": "bus"
+  },
+  {
+    "word": "buy",
+    "sourceMeaning": "v. 买",
+    "syllabusExamples": [
+      {
+        "en": "I bought a new flat in Puxi last year. It is on the ninth floor.",
+        "cn": "去年我在浦西买了一套新房子。这套房子在9楼。",
+        "start": 2,
+        "end": 8
+      },
+      {
+        "en": "If the prices come down in a few years, I will buy a car for myself.",
+        "cn": "几年后如果价格降下来，我会给自己买一辆车。",
+        "start": 47,
+        "end": 50
+      },
+      {
+        "en": "He bought a book the day before yesterday.→He has had the book for two days.",
+        "cn": "",
+        "start": 3,
+        "end": 9
+      }
+    ],
+    "example": {
+      "en": "I need to buy some bread before breakfast.",
+      "cn": "我需要在吃早饭前买些面包。",
+      "start": 10,
+      "end": 13
+    },
+    "illustrationId": "buy"
+  },
+  {
+    "word": "cake",
+    "sourceMeaning": "n. 蛋糕；糕点；饼",
+    "syllabusExamples": [
+      {
+        "en": "Mike's mother bought him a big cake on his birthday.",
+        "cn": "迈克生日那天，他妈妈给他买了一个大蛋糕。",
+        "start": 31,
+        "end": 35
+      }
+    ],
+    "example": {
+      "en": "We shared a slice of lemon cake after lunch.",
+      "cn": "午饭后，我们分着吃了一片柠檬蛋糕。",
+      "start": 27,
+      "end": 31
+    }
+  },
+  {
+    "word": "camera",
+    "sourceMeaning": "n. 照相机；摄影机",
+    "syllabusExamples": [
+      {
+        "en": "Now a camera does not cost much and most young people are certainly able to pay for it.",
+        "cn": "现在照相机花费不多，所以绝大多数年轻人都能买得起。",
+        "start": 6,
+        "end": 12
+      }
+    ],
+    "example": {
+      "en": "She raised her camera to photograph the sleeping cat.",
+      "cn": "她举起相机，给熟睡的猫拍照。",
+      "start": 15,
+      "end": 21
+    },
+    "illustrationId": "camera"
+  },
+  {
+    "word": "car",
+    "sourceMeaning": "n. 小汽车",
+    "syllabusExamples": [
+      {
+        "en": "What terrible news it is! Three people died in the car accident.",
+        "cn": "多么可怕的消息！有3人在车祸中丧生。",
+        "start": 51,
+        "end": 54
+      }
+    ],
+    "example": {
+      "en": "Our car is parked under the tree outside.",
+      "cn": "我们的汽车停在外面的树下。",
+      "start": 4,
+      "end": 7
+    }
+  },
+  {
+    "word": "cat",
+    "sourceMeaning": "n. 猫",
+    "syllabusExamples": [
+      {
+        "en": "I love cats.",
+        "cn": "我爱猫。",
+        "start": 7,
+        "end": 11
+      }
+    ],
+    "example": {
+      "en": "Our cat sleeps in a sunny spot by the window.",
+      "cn": "我们家的猫睡在窗边阳光照得到的地方。",
+      "start": 4,
+      "end": 7
+    }
+  },
+  {
+    "word": "chair",
+    "sourceMeaning": "n. 椅子",
+    "syllabusExamples": [
+      {
+        "en": "A chair consists of a seat with a back.",
+        "cn": "椅子是由椅座和椅背组成的。",
+        "start": 2,
+        "end": 7
+      }
+    ],
+    "example": {
+      "en": "She pulled a chair closer to the window.",
+      "cn": "她把一把椅子拉到离窗户更近的地方。",
+      "start": 13,
+      "end": 18
+    },
+    "illustrationId": "chair"
+  },
+  {
+    "word": "cheap",
+    "sourceMeaning": "adj. 便宜的；廉价的",
+    "syllabusExamples": [
+      {
+        "en": "The pad made last year is a lot cheaper than the one made this year.",
+        "cn": "去年生产的垫子比今年生产的便宜很多。",
+        "start": 32,
+        "end": 39
+      }
+    ],
+    "example": {
+      "en": "We found a cheap café near the train station.",
+      "cn": "我们在火车站附近找到了一家价格实惠的咖啡馆。",
+      "start": 11,
+      "end": 16
+    }
+  },
+  {
+    "word": "cheese",
+    "sourceMeaning": "n. 奶酪；干酪",
+    "syllabusExamples": [
+      {
+        "en": "The cheese cake tasted so delicious that the kids asked for more.",
+        "cn": "这奶酪蛋糕真好吃，孩子们还想要。",
+        "start": 4,
+        "end": 10
+      }
+    ],
+    "example": {
+      "en": "I added some cheese to my warm vegetable sandwich.",
+      "cn": "我在热乎乎的蔬菜三明治里加了些奶酪。",
+      "start": 13,
+      "end": 19
+    }
+  },
+  {
+    "word": "chicken",
+    "sourceMeaning": "n. 鸡；鸡肉",
+    "syllabusExamples": [
+      {
+        "en": "Mary and Alice like eating chicken, but neither of them likes eating fish.",
+        "cn": "玛丽和爱丽丝喜欢吃鸡肉，但她们都不喜欢吃鱼。",
+        "start": 27,
+        "end": 34
+      }
+    ],
+    "example": {
+      "en": "The chickens scratched the soil beside our vegetable patch.",
+      "cn": "那些鸡在我们的菜地旁刨土。",
+      "start": 4,
+      "end": 12
+    },
+    "illustrationId": "chicken"
+  },
+  {
+    "word": "child",
+    "sourceMeaning": "n. 孩子， 儿童",
+    "syllabusExamples": [
+      {
+        "en": "In winter the more heavily it snows, the happier the children will feel.",
+        "cn": "在冬季雪下得越大，孩子们越感到开心。",
+        "start": 53,
+        "end": 61
+      },
+      {
+        "en": "Children and fools speak the truth.",
+        "cn": "童言无忌。",
+        "start": 0,
+        "end": 8
+      }
+    ],
+    "example": {
+      "en": "The child carefully carried a bowl of water outside.",
+      "cn": "那个孩子小心翼翼地端着一碗水走到外面。",
+      "start": 4,
+      "end": 9
+    }
+  },
+  {
+    "word": "cinema",
+    "sourceMeaning": "n. 电影院；电影",
+    "syllabusExamples": [
+      {
+        "en": "What's on at the cinema today?",
+        "cn": "今天电影院放映什么电影？",
+        "start": 17,
+        "end": 23
+      },
+      {
+        "en": "When I got to the cinema, the film had been on for five minutes.",
+        "cn": "我到电影院时，电影已经开始5分钟了。",
+        "start": 18,
+        "end": 24
+      }
+    ],
+    "example": {
+      "en": "We met outside the cinema and bought some popcorn.",
+      "cn": "我们在电影院外碰面，买了些爆米花。",
+      "start": 19,
+      "end": 25
+    }
+  },
+  {
+    "word": "classroom",
+    "sourceMeaning": "n. 教室",
+    "syllabusExamples": [
+      {
+        "en": "When I got to the classroom just now, I found that Tom was working on a math problem.",
+        "cn": "我到教室时，发现汤姆正在演算一道数学题。",
+        "start": 18,
+        "end": 27
+      }
+    ],
+    "example": {
+      "en": "Sunlight filled the classroom as we opened our books.",
+      "cn": "我们打开书本时，阳光洒满了教室。",
+      "start": 20,
+      "end": 29
+    },
+    "illustrationId": "classroom"
+  },
+  {
+    "word": "clean",
+    "sourceMeaning": "v. 弄干净，打扫",
+    "syllabusExamples": [
+      {
+        "en": "Betty can't join us in the card game. She is cleaning the classroom.",
+        "cn": "贝蒂不能参加我们的纸牌游戏。她正在打扫教室。",
+        "start": 45,
+        "end": 53
+      },
+      {
+        "en": "Nancy always keeps her room spotlessly clean and free of any mess.",
+        "cn": "南希总是把她的房间保持得一尘不染，毫不杂乱。",
+        "start": 39,
+        "end": 44
+      }
+    ],
+    "example": {
+      "en": "There are clean towels on the shelf beside you.",
+      "cn": "你旁边的架子上有干净的毛巾。",
+      "start": 10,
+      "end": 15
+    }
+  },
+  {
+    "word": "clock",
+    "sourceMeaning": "n. 钟",
+    "syllabusExamples": [
+      {
+        "en": "Big Ben is a famous clock in London.",
+        "cn": "大本钟是伦敦一座著名的钟。",
+        "start": 20,
+        "end": 25
+      }
+    ],
+    "example": {
+      "en": "The kitchen clock stopped while we were making lunch.",
+      "cn": "我们做午饭时，厨房的时钟停了。",
+      "start": 12,
+      "end": 17
+    }
+  },
+  {
+    "word": "cloud",
+    "sourceMeaning": "n. 云； 云朵",
+    "syllabusExamples": [
+      {
+        "en": "There are so many clouds today.",
+        "cn": "今天云特别多。",
+        "start": 18,
+        "end": 24
+      }
+    ],
+    "example": {
+      "en": "A dark cloud drifted slowly across the afternoon sky.",
+      "cn": "一朵乌云缓缓飘过午后的天空。",
+      "start": 7,
+      "end": 12
+    }
+  },
+  {
+    "word": "coffee",
+    "sourceMeaning": "n. 咖啡",
+    "syllabusExamples": [
+      {
+        "en": "One of the household robots makes coffee for Mary and Frank.",
+        "cn": "其中一个家庭机器人在为玛丽和弗兰克煮咖啡。",
+        "start": 34,
+        "end": 40
+      }
+    ],
+    "example": {
+      "en": "I drink coffee with milk before leaving for work.",
+      "cn": "我上班出门前会喝一杯加奶咖啡。",
+      "start": 8,
+      "end": 14
+    },
+    "illustrationId": "coffee"
+  },
+  {
+    "word": "cold",
+    "sourceMeaning": "adj. 冷的，寒冷的",
+    "syllabusExamples": [
+      {
+        "en": "What a cold day it is! We'd better turn on the air-conditioner.",
+        "cn": "今天好冷啊！我们最好开空调。",
+        "start": 7,
+        "end": 11
+      },
+      {
+        "en": "A cold kept him in bed for three days.",
+        "cn": "感冒使他卧床3天。",
+        "start": 2,
+        "end": 6
+      }
+    ],
+    "example": {
+      "en": "My hands were cold, so I put on gloves.",
+      "cn": "我的手很冷，于是戴上了手套。",
+      "start": 14,
+      "end": 18
+    },
+    "illustrationId": "cold"
+  },
+  {
+    "word": "computer",
+    "sourceMeaning": "n. 电脑",
+    "syllabusExamples": [
+      {
+        "en": "Computer is more popular than any other subject.",
+        "cn": "",
+        "start": 0,
+        "end": 8
+      },
+      {
+        "en": "=Computer is the most popular of all the subjects.",
+        "cn": "计算机比其他学科更受欢迎。",
+        "start": 1,
+        "end": 9
+      },
+      {
+        "en": "Computers work accurately. They seldom give wrong answers, do they?",
+        "cn": "电脑运行准确。他们很少给出错误的答案，是吗？",
+        "start": 0,
+        "end": 9
+      }
+    ],
+    "example": {
+      "en": "My computer froze while I was editing holiday photos.",
+      "cn": "我编辑度假照片时，电脑卡住了。",
+      "start": 3,
+      "end": 11
+    }
+  },
+  {
+    "word": "cook",
+    "sourceMeaning": "n. 厨师，炊事员",
+    "syllabusExamples": [
+      {
+        "en": "The cook is in charge of the kitchen helper.",
+        "cn": "这位厨师负责管理厨工。",
+        "start": 4,
+        "end": 8
+      },
+      {
+        "en": "My mother cooked food for us as soon as she came back from work yesterday.",
+        "cn": "昨天我妈妈一下班回来就为我们做饭。",
+        "start": 10,
+        "end": 16
+      }
+    ],
+    "example": {
+      "en": "I usually cook vegetable soup when the weather turns cold.",
+      "cn": "天气变冷时，我通常会煮蔬菜汤。",
+      "start": 10,
+      "end": 14
+    },
+    "illustrationId": "cook"
+  },
+  {
+    "word": "cool",
+    "sourceMeaning": "adj. 凉的，凉爽的；酷的",
+    "syllabusExamples": [
+      {
+        "en": "How cool your new phone is! I want to have the same one.",
+        "cn": "你那新手机多酷啊！我想买个和你一样的。",
+        "start": 4,
+        "end": 8
+      },
+      {
+        "en": "He used a fan to help cool the room during the heatwave.",
+        "cn": "在热浪期间，他用风扇帮房间降温。",
+        "start": 22,
+        "end": 26
+      }
+    ],
+    "example": {
+      "en": "A cool breeze drifted through the open kitchen window.",
+      "cn": "一阵凉爽的微风从敞开的厨房窗户吹了进来。",
+      "start": 2,
+      "end": 6
+    }
+  },
+  {
+    "word": "dance",
+    "sourceMeaning": "n. &v.跳舞",
+    "syllabusExamples": [
+      {
+        "en": "I enjoy the popular dance“hip-hop”, but neither my father nor my mother likes it.",
+        "cn": "我喜欢流行的“嘻哈”舞蹈，但我父亲和母亲都不喜欢。",
+        "start": 20,
+        "end": 25
+      },
+      {
+        "en": "It was unusual for such old people to dance Swan Lake.",
+        "cn": "对于这个年纪的老年人来说，跳《天鹅湖》是不寻常的。",
+        "start": 38,
+        "end": 43
+      }
+    ],
+    "example": {
+      "en": "We danced in the kitchen while dinner was cooking.",
+      "cn": "晚饭还在做的时候，我们在厨房里跳起了舞。",
+      "start": 3,
+      "end": 9
+    }
+  },
+  {
+    "word": "dangerous",
+    "sourceMeaning": "adj. 危险的",
+    "syllabusExamples": [
+      {
+        "en": "The peace-keeping armies from different countries work together in dangerous areas.",
+        "cn": "来自不同国家的维和部队在危险地区协同工作。",
+        "start": 67,
+        "end": 76
+      }
+    ],
+    "example": {
+      "en": "That broken step is dangerous, so please avoid it.",
+      "cn": "那级破损的台阶很危险，请避开它。",
+      "start": 20,
+      "end": 29
+    }
+  },
+  {
+    "word": "design",
+    "sourceMeaning": "v. & n.设计；策划",
+    "syllabusExamples": [
+      {
+        "en": "A new car has been designed for the film The Italian Job.",
+        "cn": "专为电影《偷天换日》设计出一款新型汽车。",
+        "start": 19,
+        "end": 27
+      },
+      {
+        "en": "The design of the smartphone was fashionable and innovative.",
+        "cn": "这款智能手机的设计时尚而创新。",
+        "start": 4,
+        "end": 10
+      }
+    ],
+    "example": {
+      "en": "My cousin designed a wooden desk for her bedroom.",
+      "cn": "我表姐为自己的卧室设计了一张木书桌。",
+      "start": 10,
+      "end": 18
+    }
+  },
+  {
+    "word": "desk",
+    "sourceMeaning": "n. 书桌，写字台",
+    "syllabusExamples": [
+      {
+        "en": "The orange on the desk is for you,David.",
+        "cn": "桌上的橙子是给你的，戴维。",
+        "start": 18,
+        "end": 22
+      }
+    ],
+    "example": {
+      "en": "I keep my pencils in the top desk drawer.",
+      "cn": "我把铅笔放在书桌最上面的抽屉里。",
+      "start": 29,
+      "end": 33
+    }
+  },
+  {
+    "word": "dinner",
+    "sourceMeaning": "n. 正餐",
+    "syllabusExamples": [
+      {
+        "en": "I haven't had dinner yet.",
+        "cn": "我还没有吃饭呢。",
+        "start": 14,
+        "end": 20
+      },
+      {
+        "en": "Nick was having dinner when I visited him.",
+        "cn": "当我去拜访尼克的时候，他正在吃饭。",
+        "start": 16,
+        "end": 22
+      }
+    ],
+    "example": {
+      "en": "Dinner is ready, so please bring the plates.",
+      "cn": "晚饭做好了，请把盘子拿来。",
+      "start": 0,
+      "end": 6
+    }
+  },
+  {
+    "word": "dirty",
+    "sourceMeaning": "adj. 脏的",
+    "syllabusExamples": [
+      {
+        "en": "Even in the dirtiest weather, they were driven to go out to sea.",
+        "cn": "即使是最恶劣的天气，他们也被迫出海。",
+        "start": 12,
+        "end": 20
+      }
+    ],
+    "example": {
+      "en": "Please leave your dirty boots outside the kitchen door.",
+      "cn": "请把你的脏靴子放在厨房门外。",
+      "start": 18,
+      "end": 23
+    },
+    "illustrationId": "dirty"
+  },
+  {
+    "word": "doctor",
+    "sourceMeaning": "n. 医生",
+    "syllabusExamples": [
+      {
+        "en": "The doctor told my grandpa not to eat too much fat.",
+        "cn": "医生告诉我的爷爷，不要吃太多的脂肪。",
+        "start": 4,
+        "end": 10
+      }
+    ],
+    "example": {
+      "en": "The doctor listened carefully as I described my symptoms.",
+      "cn": "我描述症状时，医生认真地听着。",
+      "start": 4,
+      "end": 10
+    },
+    "illustrationId": "doctor"
+  },
+  {
+    "word": "dog",
+    "sourceMeaning": "n. 狗",
+    "syllabusExamples": [
+      {
+        "en": "The clever dog can open the gate of the garden by itself.",
+        "cn": "这条聪明的狗自己能打开花园的门。",
+        "start": 11,
+        "end": 14
+      }
+    ],
+    "example": {
+      "en": "Our dog waits by the door every afternoon.",
+      "cn": "我们的狗每天下午都守在门边。",
+      "start": 4,
+      "end": 7
+    }
+  },
+  {
+    "word": "door",
+    "sourceMeaning": "n. 门；通道",
+    "syllabusExamples": [
+      {
+        "en": "Do you know the man over there by the door?",
+        "cn": "你认识站在门边的那个男人吗？",
+        "start": 38,
+        "end": 42
+      }
+    ],
+    "example": {
+      "en": "Please close the door before the cat gets out.",
+      "cn": "请关上门，别让猫跑出去。",
+      "start": 17,
+      "end": 21
+    }
+  },
+  {
+    "word": "draw",
+    "sourceMeaning": "（drew drɔːn 绘画；绘制；拉，拖",
+    "syllabusExamples": [
+      {
+        "en": "He drew pictures worse than me.=He didn't draw pictures as well as I.",
+        "cn": "他画得比我更糟糕。",
+        "start": 42,
+        "end": 46
+      },
+      {
+        "en": "In the end they had to draw lots to decide who would take part in the competition.",
+        "cn": "最后他们不得不抽签决定谁去参加比赛。",
+        "start": 23,
+        "end": 27
+      }
+    ],
+    "example": {
+      "en": "She drew a sleeping cat in her sketchbook.",
+      "cn": "她在素描本上画了一只熟睡的猫。",
+      "start": 4,
+      "end": 8
+    },
+    "illustrationId": "draw"
+  },
+  {
+    "word": "drink",
+    "sourceMeaning": "v. 喝，饮",
+    "syllabusExamples": [
+      {
+        "en": "Drinking too much fruit juice can be harmful to children's teeth.",
+        "cn": "喝太多果汁对孩子的牙齿有害。",
+        "start": 0,
+        "end": 8
+      },
+      {
+        "en": "Coca-Cola is a soft drink.",
+        "cn": "可口可乐是一种软饮料。",
+        "start": 20,
+        "end": 25
+      }
+    ],
+    "example": {
+      "en": "I always drink some water after walking the dog.",
+      "cn": "我遛完狗总会喝些水。",
+      "start": 9,
+      "end": 14
+    }
+  },
+  {
+    "word": "duck",
+    "sourceMeaning": "n. 鸭子",
+    "syllabusExamples": [
+      {
+        "en": "The children love to feed the ducks at the lake.",
+        "cn": "孩子们喜欢喂湖里的鸭子。",
+        "start": 30,
+        "end": 35
+      }
+    ],
+    "example": {
+      "en": "A duck paddled past us with several tiny ducklings.",
+      "cn": "一只鸭子带着几只小鸭从我们身旁游过。",
+      "start": 2,
+      "end": 6
+    },
+    "illustrationId": "duck"
+  },
+  {
+    "word": "eat",
+    "sourceMeaning": "v. 吃",
+    "syllabusExamples": [
+      {
+        "en": "It's selfish of Jim to eat the whole cake and it's necessary for us to think more of others.",
+        "cn": "吉姆真自私，吃了整个蛋糕。我们有必要多想想别人。",
+        "start": 23,
+        "end": 26
+      }
+    ],
+    "example": {
+      "en": "We usually eat breakfast together before leaving the house.",
+      "cn": "我们通常一起吃完早饭再出门。",
+      "start": 11,
+      "end": 14
+    }
+  },
+  {
+    "word": "egg",
+    "sourceMeaning": "n. 蛋；卵",
+    "syllabusExamples": [
+      {
+        "en": "She has an egg for breakfast every day, doesn't she?",
+        "cn": "她每天早餐吃一个鸡蛋，不是吗？",
+        "start": 11,
+        "end": 14
+      }
+    ],
+    "example": {
+      "en": "She cracked an egg into the hot frying pan.",
+      "cn": "她把一个鸡蛋打进了热煎锅。",
+      "start": 15,
+      "end": 18
+    }
+  },
+  {
+    "word": "elephant",
+    "sourceMeaning": "n. 大象",
+    "syllabusExamples": [
+      {
+        "en": "I saw a baby elephant drinking.",
+        "cn": "我看见一只小象在喝水。",
+        "start": 13,
+        "end": 21
+      }
+    ],
+    "example": {
+      "en": "The elephant sprayed water over its back with its trunk.",
+      "cn": "大象用鼻子把水喷到自己的背上。",
+      "start": 4,
+      "end": 12
+    }
+  },
+  {
+    "word": "email",
+    "sourceMeaning": "n. 电子邮件",
+    "syllabusExamples": [
+      {
+        "en": "We communicate with each other in many ways, such as by email or by phone.",
+        "cn": "我们用很多方式交流，比如通过电子邮件或打电话。",
+        "start": 56,
+        "end": 61
+      },
+      {
+        "en": "With the help of the new technology, you can email your friends by mobile phone.",
+        "cn": "在新技术的帮助下，你可以用手机给你的朋友发邮件。",
+        "start": 45,
+        "end": 50
+      }
+    ],
+    "example": {
+      "en": "Please email me the photos from our camping trip.",
+      "cn": "请把我们露营旅行的照片通过电子邮件发给我。",
+      "start": 7,
+      "end": 12
+    }
+  },
+  {
+    "word": "English",
+    "sourceMeaning": "adj. 英国的；英国人的；英语的",
+    "syllabusExamples": [
+      {
+        "en": "The foreign teachers in our school are mainly from some English-speaking countries.",
+        "cn": "我校的外籍教师主要来自一些讲英语的国家。",
+        "start": 56,
+        "end": 63
+      },
+      {
+        "en": "By the end of last term, we had learned English for four years.",
+        "cn": "到上学期结束时，我们已经学了4年英语。",
+        "start": 40,
+        "end": 47
+      }
+    ],
+    "example": {
+      "en": "We practise English together while walking home from college.",
+      "cn": "我们从学院步行回家时一起练习英语。",
+      "start": 12,
+      "end": 19
+    }
+  },
+  {
+    "word": "environment",
+    "sourceMeaning": "n. 环境",
+    "syllabusExamples": [
+      {
+        "en": "Please tell us what to do to protect our environment.",
+        "cn": "请告诉我们应该做什么来保护我们的环境。",
+        "start": 41,
+        "end": 52
+      }
+    ],
+    "example": {
+      "en": "We cycle to school to help protect the environment.",
+      "cn": "我们骑车上学，为保护环境出一份力。",
+      "start": 39,
+      "end": 50
+    }
+  },
+  {
+    "word": "exam",
+    "sourceMeaning": "n. （笔头、口头或操作）考试， 测   试；检查",
+    "syllabusExamples": [
+      {
+        "en": "After we pass the exams, we will celebrate by having a party next week.",
+        "cn": "我们通过考试后，下周将举办个派对庆祝一下。",
+        "start": 18,
+        "end": 23
+      }
+    ],
+    "example": {
+      "en": "I have a maths exam on Friday morning.",
+      "cn": "我周五上午有一场数学考试。",
+      "start": 15,
+      "end": 19
+    },
+    "illustrationId": "exam"
+  },
+  {
+    "word": "expensive",
+    "sourceMeaning": "adj. 昂贵的； 价格高的",
+    "syllabusExamples": [
+      {
+        "en": "This beautiful skirt is as expensive as that red scarf.",
+        "cn": "",
+        "start": 27,
+        "end": 36
+      }
+    ],
+    "example": {
+      "en": "These boots are too expensive for my budget.",
+      "cn": "这双靴子太贵，超出了我的预算。",
+      "start": 20,
+      "end": 29
+    }
+  },
+  {
+    "word": "factory",
+    "sourceMeaning": "n. 工厂",
+    "syllabusExamples": [
+      {
+        "en": "The people there did not allow them to set up a factory so as not to pollute the water in the river.",
+        "cn": "为防止污染河水，那里的人不允许他们在那儿建立工厂。",
+        "start": 48,
+        "end": 55
+      }
+    ],
+    "example": {
+      "en": "My aunt works at a factory that makes bicycles.",
+      "cn": "我姑姑在一家生产自行车的工厂工作。",
+      "start": 19,
+      "end": 26
+    },
+    "illustrationId": "factory"
+  },
+  {
+    "word": "family",
+    "sourceMeaning": "n. 家庭； 家族；家人",
+    "syllabusExamples": [
+      {
+        "en": "I will take a holiday with my family as I finish all the exams.",
+        "cn": "考试一结束，我就会与家人一起去度假。",
+        "start": 30,
+        "end": 36
+      },
+      {
+        "en": "The family are very pleased about the news.",
+        "cn": "",
+        "start": 4,
+        "end": 10
+      }
+    ],
+    "example": {
+      "en": "My family gathers around the kitchen table every Sunday.",
+      "cn": "我的家人每周日都会围坐在厨房的餐桌旁。",
+      "start": 3,
+      "end": 9
+    }
+  },
+  {
+    "word": "farm",
+    "sourceMeaning": "n. 农场，农庄",
+    "syllabusExamples": [
+      {
+        "en": "Uncle Tom is a farmer. He keeps many sheep on his farm and leads a happy life.",
+        "cn": "汤姆叔叔是个农民。他在农场养了许多羊，且过着幸福的生活。",
+        "start": 15,
+        "end": 21
+      }
+    ],
+    "example": {
+      "en": "We bought fresh eggs from a nearby farm.",
+      "cn": "我们从附近的农场买了新鲜鸡蛋。",
+      "start": 35,
+      "end": 39
+    }
+  },
+  {
+    "word": "farmer",
+    "sourceMeaning": "n. 农民，农夫",
+    "syllabusExamples": [
+      {
+        "en": "The farmer looked sadly at the flooded field and he became sadder and sadder.",
+        "cn": "这个农民忧郁地望着被洪水淹没的田地，他变得越来越悲伤。",
+        "start": 4,
+        "end": 10
+      }
+    ],
+    "example": {
+      "en": "The farmer feeds her chickens before the sun rises.",
+      "cn": "这位农民在日出前给她的鸡喂食。",
+      "start": 4,
+      "end": 10
+    },
+    "illustrationId": "farmer"
+  },
+  {
+    "word": "father",
+    "sourceMeaning": "n. 父亲",
+    "syllabusExamples": [
+      {
+        "en": "Wendy's father helped her invent a new way of doing business.",
+        "cn": "温迪的父亲帮助她发明了一种新的经商方式。",
+        "start": 8,
+        "end": 14
+      }
+    ],
+    "example": {
+      "en": "Her father taught her to ride a bicycle.",
+      "cn": "她爸爸教她骑自行车。",
+      "start": 4,
+      "end": 10
+    },
+    "illustrationId": "father"
+  },
+  {
+    "word": "film",
+    "sourceMeaning": "n. 电影，影片；胶卷",
+    "syllabusExamples": [
+      {
+        "en": "Could you tell me when the film will start tomorrow evening?",
+        "cn": "你能否告诉我明天晚上的电影什么时候放映？",
+        "start": 27,
+        "end": 31
+      }
+    ],
+    "example": {
+      "en": "We watched a funny film after dinner yesterday.",
+      "cn": "昨天晚饭后，我们看了一部有趣的电影。",
+      "start": 19,
+      "end": 23
+    }
+  },
+  {
+    "word": "fire",
+    "sourceMeaning": "n. 火； 火炉； 火灾",
+    "syllabusExamples": [
+      {
+        "en": "Without fires, the oldest and largest trees would stop sunlight from reaching the forest floor. Fires can get rid of some of these old trees.",
+        "cn": "没有火，那些古老而高大的树会阻挡阳光透入森林，而火恰恰能烧掉这些老树。",
+        "start": 8,
+        "end": 13
+      },
+      {
+        "en": "The officer ordered his men to fire at the enemy.",
+        "cn": "军官命令士兵向敌人开火。",
+        "start": 31,
+        "end": 35
+      },
+      {
+        "en": "There is no smoke without fire.",
+        "cn": "无风不起浪。",
+        "start": 26,
+        "end": 30
+      }
+    ],
+    "example": {
+      "en": "We warmed our hands by the fire after dinner.",
+      "cn": "晚饭后，我们在炉火旁暖手。",
+      "start": 27,
+      "end": 31
+    },
+    "illustrationId": "fire"
+  },
+  {
+    "word": "fish",
+    "sourceMeaning": "n. 鱼；鱼肉",
+    "syllabusExamples": [
+      {
+        "en": "Damin taught his grandsons how they could catch more fish.",
+        "cn": "",
+        "start": 53,
+        "end": 57
+      },
+      {
+        "en": "= Damin taught his grandsons how to catch more fish.",
+        "cn": "达明教他的孙子如何能捕到更多的鱼。",
+        "start": 47,
+        "end": 51
+      },
+      {
+        "en": "It is better to teach a man to fish than to give him fish.",
+        "cn": "授人以鱼，不如授人以渔。",
+        "start": 31,
+        "end": 35
+      }
+    ],
+    "example": {
+      "en": "We watched small fish swimming under the wooden bridge.",
+      "cn": "我们看着小鱼在木桥下游动。",
+      "start": 17,
+      "end": 21
+    }
+  },
+  {
+    "word": "floor",
+    "sourceMeaning": "n. 地面；地板；（楼房的）层",
+    "syllabusExamples": [
+      {
+        "en": "I have bought a new flat and it's on the eighth floor of the building.",
+        "cn": "我买了一套新公寓，它在这栋楼的8楼。",
+        "start": 48,
+        "end": 53
+      }
+    ],
+    "example": {
+      "en": "My keys fell onto the kitchen floor again.",
+      "cn": "我的钥匙又掉到厨房地板上了。",
+      "start": 30,
+      "end": 35
+    }
+  },
+  {
+    "word": "flower",
+    "sourceMeaning": "n. 花",
+    "syllabusExamples": [
+      {
+        "en": "There were so many beautiful flowers on show at the park yesterday.",
+        "cn": "昨天在公园有这么多美丽的鲜花展示。",
+        "start": 29,
+        "end": 36
+      }
+    ],
+    "example": {
+      "en": "She placed fresh flowers in a vase by the window.",
+      "cn": "她把鲜花插进窗边的花瓶里。",
+      "start": 17,
+      "end": 24
+    }
+  },
+  {
+    "word": "food",
+    "sourceMeaning": "n. 食物，食品",
+    "syllabusExamples": [
+      {
+        "en": "This truck is used to deliver frozen food from the factory to the supermarket.",
+        "cn": "这辆卡车是用来将冷冻食品从工厂运送到超市的。",
+        "start": 37,
+        "end": 41
+      }
+    ],
+    "example": {
+      "en": "We packed enough food for a picnic by the lake.",
+      "cn": "我们带了足够的食物，准备在湖边野餐。",
+      "start": 17,
+      "end": 21
+    }
+  },
+  {
+    "word": "forest",
+    "sourceMeaning": "n. 森林； 林区",
+    "syllabusExamples": [
+      {
+        "en": "The air in the forest is much fresher than that in the city.",
+        "cn": "森林里的空气比城市中的要清新得多。",
+        "start": 15,
+        "end": 21
+      }
+    ],
+    "example": {
+      "en": "We followed a narrow path deep into the forest.",
+      "cn": "我们沿着一条狭窄的小路走进森林深处。",
+      "start": 40,
+      "end": 46
+    },
+    "illustrationId": "forest"
+  },
+  {
+    "word": "friend",
+    "sourceMeaning": "n. 朋友",
+    "syllabusExamples": [
+      {
+        "en": "The lady over there is a friend of mine.",
+        "cn": "那边的那位女士是我的一个朋友。",
+        "start": 25,
+        "end": 31
+      },
+      {
+        "en": "A friend of hers visited Beijing three days ago.",
+        "cn": "她的一位朋友3天前游览了北京。",
+        "start": 2,
+        "end": 8
+      },
+      {
+        "en": "A friend in need is a friend indeed.",
+        "cn": "患难见真情。",
+        "start": 2,
+        "end": 8
+      }
+    ],
+    "example": {
+      "en": "I met an old friend at the market yesterday.",
+      "cn": "我昨天在市场遇到了一位老朋友。",
+      "start": 13,
+      "end": 19
+    }
+  },
+  {
+    "word": "fruit",
+    "sourceMeaning": "n. 水果； 果实",
+    "syllabusExamples": [
+      {
+        "en": "It's important to eat a variety of fruits and vegetables.",
+        "cn": "吃各种各样的水果和蔬菜很重要。",
+        "start": 35,
+        "end": 41
+      }
+    ],
+    "example": {
+      "en": "She packed fresh fruit in my lunch box.",
+      "cn": "她在我的午餐盒里放了新鲜水果。",
+      "start": 17,
+      "end": 22
+    }
+  },
+  {
+    "word": "garden",
+    "sourceMeaning": "n. 花园，果园，菜园",
+    "syllabusExamples": [
+      {
+        "en": "How happily Little Tommy is playing with his cousin in the garden!",
+        "cn": "小汤米和他的表弟在花园里玩耍多么快乐！",
+        "start": 59,
+        "end": 65
+      }
+    ],
+    "example": {
+      "en": "We picked fresh beans from the garden before lunch.",
+      "cn": "午饭前，我们从菜园里摘了新鲜的豆角。",
+      "start": 31,
+      "end": 37
+    }
+  },
+  {
+    "word": "girl",
+    "sourceMeaning": "n. 女孩",
+    "syllabusExamples": [
+      {
+        "en": "It was unusual for such a little girl to solve this hard problem in ten minutes.",
+        "cn": "对于这样一个小女孩，在10分钟内就解决了这个棘手的问题，太不寻常了。",
+        "start": 33,
+        "end": 37
+      }
+    ],
+    "example": {
+      "en": "The girl carefully carried her kitten into the house.",
+      "cn": "那个女孩小心翼翼地把小猫抱进屋里。",
+      "start": 4,
+      "end": 8
+    }
+  },
+  {
+    "word": "grass",
+    "sourceMeaning": "n. 草；草场；牧草",
+    "syllabusExamples": [
+      {
+        "en": "She was very frightened at the sight of a snake on the grass.",
+        "cn": "看到草地上的蛇，她很害怕。",
+        "start": 55,
+        "end": 60
+      }
+    ],
+    "example": {
+      "en": "We spread a blanket on the grass beside the river.",
+      "cn": "我们在河边的草地上铺了一条毯子。",
+      "start": 27,
+      "end": 32
+    }
+  },
+  {
+    "word": "guitar",
+    "sourceMeaning": "n. 吉他",
+    "syllabusExamples": [
+      {
+        "en": "She was trying to teach him to play the guitar.",
+        "cn": "她在试着教他弹吉他。",
+        "start": 40,
+        "end": 46
+      }
+    ],
+    "example": {
+      "en": "My sister plays the guitar beside the window every evening.",
+      "cn": "我姐姐每天晚上都在窗边弹吉他。",
+      "start": 20,
+      "end": 26
+    }
+  },
+  {
+    "word": "headache",
+    "sourceMeaning": "n. 头痛",
+    "syllabusExamples": [
+      {
+        "en": "I have a terrible headache.",
+        "cn": "我头痛得厉害。",
+        "start": 18,
+        "end": 26
+      }
+    ],
+    "example": {
+      "en": "I have a headache, so I need some quiet.",
+      "cn": "我头痛，需要安静一会儿。",
+      "start": 9,
+      "end": 17
+    },
+    "illustrationId": "headache"
+  },
+  {
+    "word": "health",
+    "sourceMeaning": "n. 健康；身体（或精神）状况",
+    "syllabusExamples": [
+      {
+        "en": "Smoking is harmful to our health.",
+        "cn": "吸烟有害健康。",
+        "start": 26,
+        "end": 32
+      }
+    ],
+    "example": {
+      "en": "Walking to work has really improved my health.",
+      "cn": "步行上班确实改善了我的健康状况。",
+      "start": 39,
+      "end": 45
+    }
+  },
+  {
+    "word": "healthy",
+    "sourceMeaning": "adj. 健康的",
+    "syllabusExamples": [
+      {
+        "en": "Healthy eating and doing exercise every day can keep us fit.",
+        "cn": "健康饮食和每天运动能让我们保持健康。",
+        "start": 0,
+        "end": 7
+      }
+    ],
+    "example": {
+      "en": "Our cat stays healthy with regular exercise and checkups.",
+      "cn": "我们家的猫通过经常运动和定期检查保持健康。",
+      "start": 14,
+      "end": 21
+    }
+  },
+  {
+    "word": "hear",
+    "sourceMeaning": "hearing n.听力；听觉",
+    "syllabusExamples": [
+      {
+        "en": "Can you speak louder, please? I can't hear you clearly.",
+        "cn": "你可以大声一点吗？我听不清楚。",
+        "start": 38,
+        "end": 42
+      },
+      {
+        "en": "—Oh, I'm sorry to hear that.",
+        "cn": "",
+        "start": 18,
+        "end": 22
+      },
+      {
+        "en": "We heard two people arguing when we walked past that area.",
+        "cn": "当我们走过那个地方的时候，听到两人正在争论。",
+        "start": 3,
+        "end": 8
+      },
+      {
+        "en": "I hear him talking next door.",
+        "cn": "我听到他正在隔壁房间讲话。",
+        "start": 2,
+        "end": 6
+      },
+      {
+        "en": "Would you ask her to sing a song for us? We'd like to hear her sing like a sporano.",
+        "cn": "你能让她为我们唱一首歌吗？我们喜欢听她像女高音那样唱。",
+        "start": 54,
+        "end": 58
+      },
+      {
+        "en": "Do you hear someone knocking at the door?",
+        "cn": "（讲时还在敲）",
+        "start": 7,
+        "end": 11
+      },
+      {
+        "en": "I heard someone knock at the door three times.",
+        "cn": "（讲时敲的动作已结束）",
+        "start": 2,
+        "end": 7
+      }
+    ],
+    "example": {
+      "en": "I can hear birds singing outside my bedroom window.",
+      "cn": "我能听见卧室窗外的鸟鸣声。",
+      "start": 6,
+      "end": 10
+    },
+    "illustrationId": "hear"
+  },
+  {
+    "word": "help",
+    "sourceMeaning": "v. &n.帮助，帮忙",
+    "syllabusExamples": [
+      {
+        "en": "Can you help me to get some help?",
+        "cn": "你能帮我找人帮个忙吗？",
+        "start": 8,
+        "end": 12
+      },
+      {
+        "en": "Professor Wang personally thanked everyone who helped with the project.",
+        "cn": "王教授亲自向所有为这个项目提供过帮助的人表示了感谢。",
+        "start": 47,
+        "end": 53
+      },
+      {
+        "en": "The students have recently finished their group project with the teacher's help.",
+        "cn": "在老师的帮助下，同学们最近完成了他们的小组课题。",
+        "start": 75,
+        "end": 79
+      }
+    ],
+    "example": {
+      "en": "Could you help me carry these bags upstairs?",
+      "cn": "你能帮我把这些袋子提上楼吗？",
+      "start": 10,
+      "end": 14
+    }
+  },
+  {
+    "word": "holiday",
+    "sourceMeaning": "n. 假日；假期",
+    "syllabusExamples": [
+      {
+        "en": "—I will fly to Qingdao for my holiday this weekend.",
+        "cn": "",
+        "start": 30,
+        "end": 37
+      }
+    ],
+    "example": {
+      "en": "We spent our holiday swimming and exploring quiet villages.",
+      "cn": "我们假期里游泳，还探访了宁静的村庄。",
+      "start": 13,
+      "end": 20
+    }
+  },
+  {
+    "word": "home",
+    "sourceMeaning": "n. 家",
+    "syllabusExamples": [
+      {
+        "en": "Frank works with others from home through computers.",
+        "cn": "弗兰克在家里通过电脑与其他人联系办公。",
+        "start": 29,
+        "end": 33
+      },
+      {
+        "en": "We have spent all our money, so we have to walk home now.",
+        "cn": "我们已经花光了所有的钱，所以现在不得不步行回家。",
+        "start": 48,
+        "end": 52
+      }
+    ],
+    "example": {
+      "en": "We walked home together after dinner at the café.",
+      "cn": "在咖啡馆吃过晚饭后，我们一起走回家。",
+      "start": 10,
+      "end": 14
+    }
+  },
+  {
+    "word": "homework",
+    "sourceMeaning": "n. （学生的）家庭作业",
+    "syllabusExamples": [
+      {
+        "en": "Don't go out of the classroom until your homework is finished.",
+        "cn": "做完家庭作业前不准离开教室。",
+        "start": 41,
+        "end": 49
+      }
+    ],
+    "example": {
+      "en": "I finished my homework before dinner and went outside.",
+      "cn": "我在晚饭前做完了作业，然后出门了。",
+      "start": 14,
+      "end": 22
+    }
+  },
+  {
+    "word": "horse",
+    "sourceMeaning": "n. 马",
+    "syllabusExamples": [
+      {
+        "en": "When the horse finished the race, its sides were wet all over with sweat.",
+        "cn": "当这匹马跑完比赛，它浑身上下都是汗水。",
+        "start": 9,
+        "end": 14
+      }
+    ],
+    "example": {
+      "en": "The brown horse gently took an apple from my hand.",
+      "cn": "那匹棕色的马轻轻地吃走了我手里的苹果。",
+      "start": 10,
+      "end": 15
+    }
+  },
+  {
+    "word": "hospital",
+    "sourceMeaning": "n. 医院",
+    "syllabusExamples": [
+      {
+        "en": "The doctors in that hospital always examine patients with great care.",
+        "cn": "该院医生总是细心地为患者检查身体。",
+        "start": 20,
+        "end": 28
+      }
+    ],
+    "example": {
+      "en": "She works as a nurse at the local hospital.",
+      "cn": "她在当地医院当护士。",
+      "start": 34,
+      "end": 42
+    },
+    "illustrationId": "hospital"
+  },
+  {
+    "word": "hot",
+    "sourceMeaning": "adj. 热的；辣的",
+    "syllabusExamples": [
+      {
+        "en": "In such hot weather, people live comfortably with air conditioners.",
+        "cn": "在如此炎热的天气里，空调使人们生活舒适。",
+        "start": 8,
+        "end": 11
+      },
+      {
+        "en": "This curry is very hot.",
+        "cn": "这咖喱特别辣。",
+        "start": 19,
+        "end": 22
+      }
+    ],
+    "example": {
+      "en": "Be careful; the soup is still very hot.",
+      "cn": "小心，汤还很烫。",
+      "start": 35,
+      "end": 38
+    },
+    "illustrationId": "hot"
+  },
+  {
+    "word": "hotel",
+    "sourceMeaning": "n. 旅馆，宾馆",
+    "syllabusExamples": [
+      {
+        "en": "The Magic Hotel is amazing because it's completely underwater.",
+        "cn": "魔术酒店很奇妙，因为它完全在水下。",
+        "start": 10,
+        "end": 15
+      }
+    ],
+    "example": {
+      "en": "Our hotel room overlooks a quiet sandy beach.",
+      "cn": "我们住的酒店房间可以俯瞰一片宁静的沙滩。",
+      "start": 4,
+      "end": 9
+    }
+  },
+  {
+    "word": "house",
+    "sourceMeaning": "n. 房子；住宅；家",
+    "syllabusExamples": [
+      {
+        "en": "What good news it is! The government is planning to build more low-cost houses for its people.",
+        "cn": "政府正计划为本国人民建造更多低价住房。真是好消息啊！",
+        "start": 72,
+        "end": 78
+      }
+    ],
+    "example": {
+      "en": "Their house has a small garden behind the kitchen.",
+      "cn": "他们的房子在厨房后面有一个小花园。",
+      "start": 6,
+      "end": 11
+    }
+  },
+  {
+    "word": "hungry",
+    "sourceMeaning": "adj. 饥饿的",
+    "syllabusExamples": [
+      {
+        "en": "The animals can go hungry because their food has been damaged in the forest fire.",
+        "cn": "因为食物在这次森林火灾中遭到破坏，所以动物们可能要挨饿了。",
+        "start": 19,
+        "end": 25
+      }
+    ],
+    "example": {
+      "en": "I felt hungry after our long walk by the river.",
+      "cn": "在河边走了很久之后，我觉得饿了。",
+      "start": 7,
+      "end": 13
+    },
+    "illustrationId": "hungry"
+  },
+  {
+    "word": "ill",
+    "sourceMeaning": "adj. 有病的； 不健康的",
+    "syllabusExamples": [
+      {
+        "en": "John is seriously ill, so you ought to spend more time caring for him these days.",
+        "cn": "约翰病得很重，所以这些天你应该多花些时间照顾他。",
+        "start": 18,
+        "end": 21
+      }
+    ],
+    "example": {
+      "en": "I felt ill after the long bus journey.",
+      "cn": "长途乘车后，我感到身体不适。",
+      "start": 7,
+      "end": 10
+    },
+    "illustrationId": "ill"
+  },
+  {
+    "word": "island",
+    "sourceMeaning": "n. 岛",
+    "syllabusExamples": [
+      {
+        "en": "Taiwan is the biggest island of China. I hope to visit it soon.",
+        "cn": "台湾是中国最大的岛屿。我希望不久能参观这座岛。",
+        "start": 22,
+        "end": 28
+      }
+    ],
+    "example": {
+      "en": "We took a small boat to the island yesterday.",
+      "cn": "昨天我们乘小船去了那座岛。",
+      "start": 28,
+      "end": 34
+    },
+    "illustrationId": "island"
+  },
+  {
+    "word": "job",
+    "sourceMeaning": "n. 工作",
+    "syllabusExamples": [
+      {
+        "en": "The local government is planning to create more jobs for young people.",
+        "cn": "当地政府正计划为年轻人创造更多的就业机会。",
+        "start": 48,
+        "end": 52
+      },
+      {
+        "en": "He got a job as a waiter.",
+        "cn": "他找到一份服务员的工作。",
+        "start": 9,
+        "end": 12
+      },
+      {
+        "en": "Cooking is not an easy job.",
+        "cn": "做饭不是一件容易的事。",
+        "start": 23,
+        "end": 26
+      }
+    ],
+    "example": {
+      "en": "My sister found a job at the local library.",
+      "cn": "我姐姐在当地图书馆找到了一份工作。",
+      "start": 18,
+      "end": 21
+    },
+    "illustrationId": "job"
+  },
+  {
+    "word": "juice",
+    "sourceMeaning": "n. 果汁",
+    "syllabusExamples": [
+      {
+        "en": "—Let's go to get a pizza and a glass of orange juice.",
+        "cn": "",
+        "start": 47,
+        "end": 52
+      }
+    ],
+    "example": {
+      "en": "She squeezed fresh orange juice into a glass.",
+      "cn": "她把鲜橙汁挤进了玻璃杯里。",
+      "start": 26,
+      "end": 31
+    },
+    "illustrationId": "juice"
+  },
+  {
+    "word": "keyboard",
+    "sourceMeaning": "n. （计算机或打字机的）键盘",
+    "syllabusExamples": [
+      {
+        "en": "The keyboard is used to put information into the computer.",
+        "cn": "键盘用于把信息输入电脑。",
+        "start": 4,
+        "end": 12
+      }
+    ],
+    "example": {
+      "en": "I brushed the crumbs off my keyboard before starting work.",
+      "cn": "开始工作前，我把键盘上的碎屑刷掉了。",
+      "start": 28,
+      "end": 36
+    }
+  },
+  {
+    "word": "kitchen",
+    "sourceMeaning": "n. 厨房",
+    "syllabusExamples": [
+      {
+        "en": "Billy, is your mother cooking meat in the kitchen? It smells so nice!",
+        "cn": "比利，你妈妈是不是在厨房炖肉？味道很香！",
+        "start": 42,
+        "end": 49
+      }
+    ],
+    "example": {
+      "en": "The kitchen smells of fresh bread and roasted vegetables.",
+      "cn": "厨房里飘着新鲜面包和烤蔬菜的香味。",
+      "start": 4,
+      "end": 11
+    }
+  },
+  {
+    "word": "lake",
+    "sourceMeaning": "n. 湖",
+    "syllabusExamples": [
+      {
+        "en": "The lake looks beautiful in the moonlight. I often take a walk around it.",
+        "cn": "在月光下湖看起来很漂亮。我经常沿着湖散步。",
+        "start": 4,
+        "end": 8
+      }
+    ],
+    "example": {
+      "en": "We rented a small boat and crossed the lake.",
+      "cn": "我们租了一条小船，划到了湖对岸。",
+      "start": 39,
+      "end": 43
+    },
+    "illustrationId": "lake"
+  },
+  {
+    "word": "language",
+    "sourceMeaning": "n. 语言",
+    "syllabusExamples": [
+      {
+        "en": "It goes without saying that studying vocabulary is a key part of language learning.",
+        "cn": "不用说也知道，学习词汇是学习语言的一个主要部分。",
+        "start": 65,
+        "end": 73
+      }
+    ],
+    "example": {
+      "en": "My neighbour teaches me a little of her language.",
+      "cn": "邻居教我一点她的语言。",
+      "start": 40,
+      "end": 48
+    }
+  },
+  {
+    "word": "learn",
+    "sourceMeaning": "v. 学习；学会",
+    "syllabusExamples": [
+      {
+        "en": "In some English classes, pictures are used to help the students learn new words.",
+        "cn": "在一些英语课上，图片被用来辅助学生学习新单词。",
+        "start": 64,
+        "end": 69
+      },
+      {
+        "en": "We soon learned how to grow organic vegetables.",
+        "cn": "",
+        "start": 8,
+        "end": 15
+      },
+      {
+        "en": "=We soon learned how they grew organic vegetables.",
+        "cn": "我们很快就学会如何种植有机蔬菜。",
+        "start": 9,
+        "end": 16
+      },
+      {
+        "en": "Learn young, learn fair.",
+        "cn": "学习趁年轻，学就要学好。",
+        "start": 0,
+        "end": 5
+      }
+    ],
+    "example": {
+      "en": "My grandfather is learning to swim at the local pool.",
+      "cn": "我爷爷正在附近的游泳池学游泳。",
+      "start": 18,
+      "end": 26
+    }
+  },
+  {
+    "word": "lesson",
+    "sourceMeaning": "n. 课； 功课；教训",
+    "syllabusExamples": [
+      {
+        "en": "If Tony isn't careful enough with his lesson, more mistakes will be made later.",
+        "cn": "托尼如果不仔细做功课，他以后将犯更多的错误。",
+        "start": 38,
+        "end": 44
+      }
+    ],
+    "example": {
+      "en": "Our swimming lesson starts after school on Thursday.",
+      "cn": "我们的游泳课在周四放学后开始。",
+      "start": 13,
+      "end": 19
+    },
+    "illustrationId": "lesson"
+  },
+  {
+    "word": "letter",
+    "sourceMeaning": "n. 信；字母",
+    "syllabusExamples": [
+      {
+        "en": "——What did your son say in the letter?",
+        "cn": "",
+        "start": 31,
+        "end": 37
+      }
+    ],
+    "example": {
+      "en": "A letter from my sister arrived this morning.",
+      "cn": "今天早上，我收到了姐姐寄来的信。",
+      "start": 2,
+      "end": 8
+    },
+    "illustrationId": "letter"
+  },
+  {
+    "word": "library",
+    "sourceMeaning": "n. 图书馆， 图书室",
+    "syllabusExamples": [
+      {
+        "en": "I' ve borrowed two books from our school library.",
+        "cn": "我从学校图书馆借了2本书。",
+        "start": 41,
+        "end": 48
+      }
+    ],
+    "example": {
+      "en": "I borrowed three books from the library after school.",
+      "cn": "放学后，我从图书馆借了三本书。",
+      "start": 32,
+      "end": 39
+    },
+    "illustrationId": "library"
+  },
+  {
+    "word": "lion",
+    "sourceMeaning": "n. 狮子",
+    "syllabusExamples": [
+      {
+        "en": "She was frightened by the roars of a lion.",
+        "cn": "她被狮子的吼叫声吓呆了。",
+        "start": 37,
+        "end": 41
+      }
+    ],
+    "example": {
+      "en": "The lion rested beneath a tree in the shade.",
+      "cn": "那头狮子在树荫下休息。",
+      "start": 4,
+      "end": 8
+    },
+    "illustrationId": "lion"
+  },
+  {
+    "word": "listen",
+    "sourceMeaning": "v. 听；仔细听",
+    "syllabusExamples": [
+      {
+        "en": "How wonderful the music is! I will listen to it again.",
+        "cn": "这音乐多么美妙！我会再听一遍的。",
+        "start": 35,
+        "end": 41
+      }
+    ],
+    "example": {
+      "en": "I listen to music while cooking dinner every evening.",
+      "cn": "每天晚上做饭时，我都会听音乐。",
+      "start": 2,
+      "end": 8
+    }
+  },
+  {
+    "word": "lunch",
+    "sourceMeaning": "n. 午餐，午饭",
+    "syllabusExamples": [
+      {
+        "en": "Nobody at the lunch table believed the truth of his story.",
+        "cn": "在午餐桌上，没人相信他的故事是真的。",
+        "start": 14,
+        "end": 19
+      }
+    ],
+    "example": {
+      "en": "We ate lunch under a tree beside the river.",
+      "cn": "我们在河边的一棵树下吃了午饭。",
+      "start": 7,
+      "end": 12
+    }
+  },
+  {
+    "word": "man",
+    "sourceMeaning": "n. 成年男人；人；人类",
+    "syllabusExamples": [
+      {
+        "en": "Look at the photo! The fifth man from the right is my class teacher.",
+        "cn": "看照片！从右边起第五个男人是我的班主任。",
+        "start": 29,
+        "end": 32
+      },
+      {
+        "en": "No man is born wise or learned.",
+        "cn": "人非生而知之。",
+        "start": 3,
+        "end": 6
+      }
+    ],
+    "example": {
+      "en": "A man in a blue coat held the door open.",
+      "cn": "一位穿蓝色外套的男子扶着门，让别人通过。",
+      "start": 2,
+      "end": 5
+    }
+  },
+  {
+    "word": "market",
+    "sourceMeaning": "n. 市场；集市",
+    "syllabusExamples": [
+      {
+        "en": "Where is the nearest market?",
+        "cn": "最近的集市在哪儿?",
+        "start": 21,
+        "end": 27
+      }
+    ],
+    "example": {
+      "en": "We bought fresh peaches at the market this morning.",
+      "cn": "今天早上我们在集市买了新鲜桃子。",
+      "start": 31,
+      "end": 37
+    }
+  },
+  {
+    "word": "meat",
+    "sourceMeaning": "n. 肉",
+    "syllabusExamples": [
+      {
+        "en": "“Mr. Zhu, you'd better not eat too much meat. You are already overweight,” said the doctor.",
+        "cn": "医生说：“朱先生，您最好不要吃太多的肉。您已经超重了。”",
+        "start": 40,
+        "end": 44
+      }
+    ],
+    "example": {
+      "en": "We keep raw meat separate from vegetables in the fridge.",
+      "cn": "我们把生肉和蔬菜分开放在冰箱里。",
+      "start": 12,
+      "end": 16
+    }
+  },
+  {
+    "word": "menu",
+    "sourceMeaning": "n. 菜单",
+    "syllabusExamples": [
+      {
+        "en": "Could you give us another menu?",
+        "cn": "你可以再给我们一份菜单吗？",
+        "start": 26,
+        "end": 30
+      }
+    ],
+    "example": {
+      "en": "There are several vegetarian dishes on the menu.",
+      "cn": "菜单上有几道素菜。",
+      "start": 43,
+      "end": 47
+    }
+  },
+  {
+    "word": "message",
+    "sourceMeaning": "n. 消息；音信",
+    "syllabusExamples": [
+      {
+        "en": "I telephoned Jane just now, but she wasn't in. I had to leave her a message.",
+        "cn": "刚才我打电话给简，但她不在，我不得不给她留下口信。",
+        "start": 68,
+        "end": 75
+      }
+    ],
+    "example": {
+      "en": "Please leave a message if I miss your call.",
+      "cn": "如果我没接到你的电话，请留言。",
+      "start": 15,
+      "end": 22
+    }
+  },
+  {
+    "word": "money",
+    "sourceMeaning": "n. 钱；货币",
+    "syllabusExamples": [
+      {
+        "en": "Peter doesn't need any money from his parents because he has found a good job and can earn money by himself.",
+        "cn": "彼得不必向他的父母要钱，因为他已经找到一份好工作，可以自己挣钱。",
+        "start": 23,
+        "end": 28
+      }
+    ],
+    "example": {
+      "en": "I saved enough money to buy a new bicycle.",
+      "cn": "我攒够了买一辆新自行车的钱。",
+      "start": 15,
+      "end": 20
+    }
+  },
+  {
+    "word": "monkey",
+    "sourceMeaning": "n. 猴子",
+    "syllabusExamples": [
+      {
+        "en": "The monkey was swinging in the tree.",
+        "cn": "猴子在树上荡来荡去。",
+        "start": 4,
+        "end": 10
+      }
+    ],
+    "example": {
+      "en": "A little monkey swung between branches above our heads.",
+      "cn": "一只小猴子在我们头顶的树枝间荡来荡去。",
+      "start": 9,
+      "end": 15
+    },
+    "illustrationId": "monkey"
+  },
+  {
+    "word": "moon",
+    "sourceMeaning": "n. 月球；月亮",
+    "syllabusExamples": [
+      {
+        "en": "What shape is the moon, Mike?",
+        "cn": "迈克，月亮是什么形状的？",
+        "start": 18,
+        "end": 22
+      }
+    ],
+    "example": {
+      "en": "The moon rose slowly above the trees behind our house.",
+      "cn": "月亮在我们屋后的树梢上缓缓升起。",
+      "start": 4,
+      "end": 8
+    },
+    "illustrationId": "moon"
+  },
+  {
+    "word": "mother",
+    "sourceMeaning": "n. 母亲",
+    "syllabusExamples": [
+      {
+        "en": "My mother is nearly 80 and she's starting to get a bit forgetful.",
+        "cn": "我的母亲近80岁，她开始有点健忘。",
+        "start": 3,
+        "end": 9
+      },
+      {
+        "en": "Diligence is the mother of success.",
+        "cn": "勤奋是成功之母。",
+        "start": 17,
+        "end": 23
+      }
+    ],
+    "example": {
+      "en": "My mother taught me how to ride a bicycle.",
+      "cn": "我妈妈教会了我骑自行车。",
+      "start": 3,
+      "end": 9
+    },
+    "illustrationId": "mother"
+  },
+  {
+    "word": "mountain",
+    "sourceMeaning": "n. 山； 高山； 山脉",
+    "syllabusExamples": [
+      {
+        "en": "On the Double Ninth Festival, people usually climb mountains.",
+        "cn": "在重阳节，人们通常去爬山。",
+        "start": 51,
+        "end": 60
+      }
+    ],
+    "example": {
+      "en": "Snow covered the mountain even in the middle of summer.",
+      "cn": "即使在盛夏，那座山仍被白雪覆盖。",
+      "start": 17,
+      "end": 25
+    },
+    "illustrationId": "mountain"
+  },
+  {
+    "word": "mouse",
+    "sourceMeaning": "n. 老鼠； （计算机）鼠标",
+    "syllabusExamples": [
+      {
+        "en": "The baby likes to watch Mickey Mouse cartoons best.",
+        "cn": "宝宝最喜欢看米老鼠卡通片了。",
+        "start": 31,
+        "end": 36
+      }
+    ],
+    "example": {
+      "en": "A tiny mouse slipped behind the cupboard before breakfast.",
+      "cn": "早饭前，一只小老鼠溜到了橱柜后面。",
+      "start": 7,
+      "end": 12
+    },
+    "illustrationId": "mouse"
+  },
+  {
+    "word": "music",
+    "sourceMeaning": "n. 音乐；乐曲",
+    "syllabusExamples": [
+      {
+        "en": "The music he was playing was so beautiful. We all lost ourselves in it.",
+        "cn": "他演奏的音乐是如此优美。我们都陶醉了。",
+        "start": 4,
+        "end": 9
+      }
+    ],
+    "example": {
+      "en": "Soft music drifted through the kitchen while we cooked.",
+      "cn": "我们做饭时，轻柔的音乐在厨房里飘荡。",
+      "start": 5,
+      "end": 10
+    }
+  },
+  {
+    "word": "nurse",
+    "sourceMeaning": "n. 护士；保育员",
+    "syllabusExamples": [
+      {
+        "en": "Is Li Ping's mother a nurse or a doctor?",
+        "cn": "李平的母亲是护士还是医生？",
+        "start": 22,
+        "end": 27
+      }
+    ],
+    "example": {
+      "en": "The nurse gently wrapped a bandage around my wrist.",
+      "cn": "护士轻轻地用绷带包住我的手腕。",
+      "start": 4,
+      "end": 9
+    },
+    "illustrationId": "nurse"
+  },
+  {
+    "word": "office",
+    "sourceMeaning": "n. 办公室；办公楼",
+    "syllabusExamples": [
+      {
+        "en": "Jack is such a forgetful fellow, for he always leaves this or that at the office.",
+        "cn": "杰克是一个健忘的家伙，因为他总把这个或那个东西落在办公室。",
+        "start": 74,
+        "end": 80
+      }
+    ],
+    "example": {
+      "en": "I left my umbrella under the desk at the office.",
+      "cn": "我把伞落在办公室的桌子下面了。",
+      "start": 41,
+      "end": 47
+    }
+  },
+  {
+    "word": "orange",
+    "sourceMeaning": "n. 橘子， 橙； 橙色",
+    "syllabusExamples": [
+      {
+        "en": "Orange juice contains things which help keep you healthy.",
+        "cn": "橘子汁里含有益于健康的东西。",
+        "start": 0,
+        "end": 6
+      },
+      {
+        "en": "I prefer that orange blouse.",
+        "cn": "我更喜欢那件橙色的女衬衫。",
+        "start": 14,
+        "end": 20
+      }
+    ],
+    "example": {
+      "en": "I peeled an orange and shared it with my sister.",
+      "cn": "我剥了一个橙子，和妹妹分着吃。",
+      "start": 12,
+      "end": 18
+    }
+  },
+  {
+    "word": "panda",
+    "sourceMeaning": "n. 熊猫",
+    "syllabusExamples": [
+      {
+        "en": "The panda attracted many children.",
+        "cn": "那只熊猫吸引了不少孩子。",
+        "start": 4,
+        "end": 9
+      }
+    ],
+    "example": {
+      "en": "The panda sat quietly, chewing a fresh bamboo shoot.",
+      "cn": "那只大熊猫静静地坐着，嚼着一根新鲜竹笋。",
+      "start": 4,
+      "end": 9
+    },
+    "illustrationId": "panda"
+  },
+  {
+    "word": "paper",
+    "sourceMeaning": "n. （不可数）纸；（可数）报纸；考卷；文件",
+    "syllabusExamples": [
+      {
+        "en": "He wrote a number on a piece of paper.",
+        "cn": "他在一张纸上写了一个数字。",
+        "start": 32,
+        "end": 37
+      },
+      {
+        "en": "I read the news in the papers.",
+        "cn": "我在报纸上看到了这则消息。",
+        "start": 23,
+        "end": 29
+      }
+    ],
+    "example": {
+      "en": "She wrapped the small gift in bright yellow paper.",
+      "cn": "她用鲜黄色的纸把小礼物包了起来。",
+      "start": 44,
+      "end": 49
+    }
+  },
+  {
+    "word": "parent",
+    "sourceMeaning": "n. 父（母）, (parents)双亲",
+    "syllabusExamples": [
+      {
+        "en": "Peter will cook for his parents when the International Day of Families comes.",
+        "cn": "",
+        "start": 24,
+        "end": 31
+      }
+    ],
+    "example": {
+      "en": "Each parent brought a snack for the school picnic.",
+      "cn": "每位家长都为学校野餐带了一份点心。",
+      "start": 5,
+      "end": 11
+    }
+  },
+  {
+    "word": "park",
+    "sourceMeaning": "n. 公园",
+    "syllabusExamples": [
+      {
+        "en": "Mr. Smith thought the Century Park was the second largest park in Shanghai.",
+        "cn": "史密斯先生认为，世纪公园是上海第二大公园。",
+        "start": 30,
+        "end": 34
+      },
+      {
+        "en": "He found a place to park the car.",
+        "cn": "他找到了一个停车位。",
+        "start": 20,
+        "end": 24
+      }
+    ],
+    "example": {
+      "en": "We shared a picnic under the trees in the park.",
+      "cn": "我们在公园的树下共进了野餐。",
+      "start": 42,
+      "end": 46
+    },
+    "illustrationId": "park"
+  },
+  {
+    "word": "pay",
+    "sourceMeaning": "v. 付钱，给⋯⋯报酬；（与某些名词结合使用，表示将要做或付出某事物）",
+    "syllabusExamples": [
+      {
+        "en": "Mr. Fermont couldn't believe that his wife paid $10,000 for just a handbag.",
+        "cn": "",
+        "start": 43,
+        "end": 47
+      },
+      {
+        "en": "Twenty dollars was paid to me.",
+        "cn": "付给我20美元。",
+        "start": 19,
+        "end": 23
+      },
+      {
+        "en": "The workers demand a twenty percent pay rise.",
+        "cn": "工人要求加薪20%。",
+        "start": 36,
+        "end": 39
+      }
+    ],
+    "example": {
+      "en": "Can I pay for these apples by card?",
+      "cn": "这些苹果可以刷卡付款吗？",
+      "start": 6,
+      "end": 9
+    }
+  },
+  {
+    "word": "pen",
+    "sourceMeaning": "n. 钢笔；笔",
+    "syllabusExamples": [
+      {
+        "en": "Students are required to write their exercises in pen.",
+        "cn": "学生被要求用钢笔做练习。",
+        "start": 50,
+        "end": 53
+      }
+    ],
+    "example": {
+      "en": "Could you lend me a pen for this form?",
+      "cn": "你能借我一支笔填这张表吗？",
+      "start": 20,
+      "end": 23
+    }
+  },
+  {
+    "word": "pencil",
+    "sourceMeaning": "n. 铅笔",
+    "syllabusExamples": [
+      {
+        "en": "Who has taken my pencil away? I used it minutes ago.",
+        "cn": "谁拿了我的铅笔？几分钟前我还在用呢。",
+        "start": 17,
+        "end": 23
+      }
+    ],
+    "example": {
+      "en": "She sharpened her pencil before sketching the sleeping cat.",
+      "cn": "她削好铅笔，开始画那只熟睡的猫。",
+      "start": 18,
+      "end": 24
+    },
+    "illustrationId": "pencil"
+  },
+  {
+    "word": "people",
+    "sourceMeaning": "n. 人；人们；人民",
+    "syllabusExamples": [
+      {
+        "en": "It is reported that more than two thousand people have been killed in this big earthquake.",
+        "cn": "据报道，在这次的大地震中死亡人数已超过两千人。",
+        "start": 43,
+        "end": 49
+      }
+    ],
+    "example": {
+      "en": "Several people were waiting outside the bakery this morning.",
+      "cn": "今天早晨，有几个人在面包店外等候。",
+      "start": 8,
+      "end": 14
+    }
+  },
+  {
+    "word": "phone",
+    "sourceMeaning": "n. 电话；电话机",
+    "syllabusExamples": [
+      {
+        "en": "Doug's 14-year-old son Jamie answered the phone.",
+        "cn": "道格14岁的儿子杰米接了电话。",
+        "start": 42,
+        "end": 47
+      },
+      {
+        "en": "Yesterday he phoned Laura to see if she was better.",
+        "cn": "昨天他打电话给劳拉，问她是不是好些了。",
+        "start": 13,
+        "end": 19
+      }
+    ],
+    "example": {
+      "en": "My phone rang while I was washing the dishes.",
+      "cn": "我洗碗时，电话响了。",
+      "start": 3,
+      "end": 8
+    },
+    "illustrationId": "phone"
+  },
+  {
+    "word": "photo",
+    "sourceMeaning": "n. 照片",
+    "syllabusExamples": [
+      {
+        "en": "We took many photos at Grandpa's birthday party.",
+        "cn": "我们在爷爷的生日聚会上拍了很多照片。",
+        "start": 13,
+        "end": 19
+      }
+    ],
+    "example": {
+      "en": "We took a photo beside the old bridge.",
+      "cn": "我们在那座老桥旁拍了张照片。",
+      "start": 10,
+      "end": 15
+    }
+  },
+  {
+    "word": "piano",
+    "sourceMeaning": "n. 钢琴",
+    "syllabusExamples": [
+      {
+        "en": "Alice loves music. Every day she practises playing the piano for an hour.",
+        "cn": "爱丽丝热爱音乐。她每天练习弹钢琴一个小时。",
+        "start": 55,
+        "end": 60
+      }
+    ],
+    "example": {
+      "en": "My sister practises the piano after dinner every evening.",
+      "cn": "我姐姐每天晚饭后练钢琴。",
+      "start": 24,
+      "end": 29
+    },
+    "illustrationId": "piano"
+  },
+  {
+    "word": "picture",
+    "sourceMeaning": "n. 图片， 图画， 照片； 影片",
+    "syllabusExamples": [
+      {
+        "en": "I had a picture taken this morning.",
+        "cn": "今天上午我请人给我拍了张照片。",
+        "start": 8,
+        "end": 15
+      }
+    ],
+    "example": {
+      "en": "She hung a picture of the sea above her bed.",
+      "cn": "她在床头上方挂了一幅海景画。",
+      "start": 11,
+      "end": 18
+    }
+  },
+  {
+    "word": "pig",
+    "sourceMeaning": "n. 猪",
+    "syllabusExamples": [
+      {
+        "en": "He raises pigs for a living.",
+        "cn": "他以养猪为生。",
+        "start": 10,
+        "end": 14
+      }
+    ],
+    "example": {
+      "en": "A pink pig was sleeping beside the wooden fence.",
+      "cn": "一头粉色的猪正睡在木栅栏旁。",
+      "start": 7,
+      "end": 10
+    }
+  },
+  {
+    "word": "plane",
+    "sourceMeaning": "n. 飞机",
+    "syllabusExamples": [
+      {
+        "en": "The pilot landed the plane safely at its home airport.",
+        "cn": "飞行员将飞机安全地降落在驻地机场。",
+        "start": 21,
+        "end": 26
+      }
+    ],
+    "example": {
+      "en": "Our plane landed just before the rain began.",
+      "cn": "我们的飞机刚降落，雨就下起来了。",
+      "start": 4,
+      "end": 9
+    }
+  },
+  {
+    "word": "pool",
+    "sourceMeaning": "n. 水塘；水池；水坑",
+    "syllabusExamples": [
+      {
+        "en": "After the heavy rain there were pools on the road.",
+        "cn": "大雨过后路上有一些小水塘。",
+        "start": 32,
+        "end": 37
+      }
+    ],
+    "example": {
+      "en": "We spent the afternoon swimming in the outdoor pool.",
+      "cn": "我们整个下午都在室外游泳池游泳。",
+      "start": 47,
+      "end": 51
+    },
+    "illustrationId": "pool"
+  },
+  {
+    "word": "price",
+    "sourceMeaning": "n. 价格，价钱",
+    "syllabusExamples": [
+      {
+        "en": "Nowadays people complain that food prices are higher than before.",
+        "cn": "现在人们都抱怨食品价格比以前高了。",
+        "start": 35,
+        "end": 41
+      }
+    ],
+    "example": {
+      "en": "The price of fresh strawberries has fallen this week.",
+      "cn": "这周新鲜草莓的价格降了。",
+      "start": 4,
+      "end": 9
+    }
+  },
+  {
+    "word": "question",
+    "sourceMeaning": "n. 问题",
+    "syllabusExamples": [
+      {
+        "en": "Well done! You have answered all the questions correctly.",
+        "cn": "干得好！你已正确回答了所有的问题。",
+        "start": 37,
+        "end": 46
+      }
+    ],
+    "example": {
+      "en": "I raised my hand to ask the teacher a question.",
+      "cn": "我举手向老师提了一个问题。",
+      "start": 38,
+      "end": 46
+    },
+    "illustrationId": "question"
+  },
+  {
+    "word": "radio",
+    "sourceMeaning": "n. 无线电（广播）；收音机",
+    "syllabusExamples": [
+      {
+        "en": "Father bought her a stereo radio.",
+        "cn": "父亲给她买了台立体声收音机。",
+        "start": 27,
+        "end": 32
+      }
+    ],
+    "example": {
+      "en": "Dad keeps a small radio on the kitchen shelf.",
+      "cn": "爸爸在厨房架子上放着一台小收音机。",
+      "start": 18,
+      "end": 23
+    },
+    "illustrationId": "radio"
+  },
+  {
+    "word": "rain",
+    "sourceMeaning": "n. 雨，雨水",
+    "syllabusExamples": [
+      {
+        "en": "In fact, there isn't so much rain in the city as they think.",
+        "cn": "事实上，这座城市不像他们想的那样有这么多的雨水。",
+        "start": 29,
+        "end": 33
+      },
+      {
+        "en": "We will go to the Happy Valley tomorrow unless it rains.",
+        "cn": "如果明天不下雨，我们会去欢乐谷。",
+        "start": 50,
+        "end": 55
+      }
+    ],
+    "example": {
+      "en": "Heavy rain kept us inside for the whole afternoon.",
+      "cn": "大雨让我们整个下午都待在屋里。",
+      "start": 6,
+      "end": 10
+    }
+  },
+  {
+    "word": "read",
+    "sourceMeaning": "v. 读； 朗读",
+    "syllabusExamples": [
+      {
+        "en": "It's easy to memorise the words if we know how to read them correctly.",
+        "cn": "如果我们知道如何正确地读出这些单词，就很容易记住它们了。",
+        "start": 50,
+        "end": 54
+      },
+      {
+        "en": "Tommy asked me if I was interested in reading science fiction.",
+        "cn": "汤米问我是否对读科幻小说感兴趣。",
+        "start": 38,
+        "end": 45
+      },
+      {
+        "en": "Jenny was reading the text of Lesson Three at 8:00 last night.",
+        "cn": "昨天晚上8点珍妮正在读第3课的课文。",
+        "start": 10,
+        "end": 17
+      },
+      {
+        "en": "Reading makes a full man.",
+        "cn": "读书长见识。",
+        "start": 0,
+        "end": 7
+      }
+    ],
+    "example": {
+      "en": "I read a few pages before bed every night.",
+      "cn": "我每天晚上睡前都会读几页书。",
+      "start": 2,
+      "end": 6
+    },
+    "illustrationId": "read"
+  },
+  {
+    "word": "remember",
+    "sourceMeaning": "v. 记得； 想起",
+    "syllabusExamples": [
+      {
+        "en": "The famous singer died, but her sweet voice will be remembered for ever.",
+        "cn": "这位著名歌手去世了，但她甜美的声音将永远被铭记。",
+        "start": 52,
+        "end": 62
+      },
+      {
+        "en": "I remembered turning off the lights when I left the room.",
+        "cn": "",
+        "start": 2,
+        "end": 12
+      },
+      {
+        "en": "Please remember to close the door when you go to bed.",
+        "cn": "",
+        "start": 7,
+        "end": 15
+      }
+    ],
+    "example": {
+      "en": "I still remember the smell of my grandmother's kitchen.",
+      "cn": "我至今还记得祖母厨房里的气味。",
+      "start": 8,
+      "end": 16
+    }
+  },
+  {
+    "word": "restaurant",
+    "sourceMeaning": "n. 饭馆；饭店；餐厅",
+    "syllabusExamples": [
+      {
+        "en": "I shall leave the restaurant unless the waiter comes soon.",
+        "cn": "",
+        "start": 18,
+        "end": 28
+      },
+      {
+        "en": "=I shall leave the restaurant if the waiter doesn't come soon.",
+        "cn": "除非服务员马上来，否则我就离开饭店。",
+        "start": 19,
+        "end": 29
+      }
+    ],
+    "example": {
+      "en": "We found a quiet restaurant beside the river.",
+      "cn": "我们在河边找到了一家安静的餐馆。",
+      "start": 17,
+      "end": 27
+    }
+  },
+  {
+    "word": "rice",
+    "sourceMeaning": "n. 稻；米；米饭",
+    "syllabusExamples": [
+      {
+        "en": "The southerners prefer rice and the northerners prefer food made from flour.",
+        "cn": "南方人比较喜欢吃米饭，北方人爱吃面食。",
+        "start": 23,
+        "end": 27
+      }
+    ],
+    "example": {
+      "en": "We had rice with steamed fish for dinner.",
+      "cn": "我们晚餐吃了米饭和清蒸鱼。",
+      "start": 7,
+      "end": 11
+    }
+  },
+  {
+    "word": "river",
+    "sourceMeaning": "n. 江，河",
+    "syllabusExamples": [
+      {
+        "en": "These factories are trying their best not to pollute the river any longer.",
+        "cn": "这些工厂正在尽力不再污染河流。",
+        "start": 57,
+        "end": 62
+      }
+    ],
+    "example": {
+      "en": "We watched ducks swimming across the river this morning.",
+      "cn": "今天早上，我们看着鸭子游过河面。",
+      "start": 37,
+      "end": 42
+    },
+    "illustrationId": "river"
+  },
+  {
+    "word": "road",
+    "sourceMeaning": "n. 路，道路",
+    "syllabusExamples": [
+      {
+        "en": "We should drive carefully on the road.",
+        "cn": "在道路上我们应该小心驾驶。",
+        "start": 33,
+        "end": 37
+      },
+      {
+        "en": "Confidence in yourself is the first step on the road to success.",
+        "cn": "",
+        "start": 48,
+        "end": 52
+      }
+    ],
+    "example": {
+      "en": "Look both ways before you cross the road.",
+      "cn": "过马路前要向两边看。",
+      "start": 36,
+      "end": 40
+    }
+  },
+  {
+    "word": "room",
+    "sourceMeaning": "n. 房间，室；空间；地方",
+    "syllabusExamples": [
+      {
+        "en": "This is a three-metre-high room.",
+        "cn": "这是一个3米高的房间。",
+        "start": 27,
+        "end": 31
+      },
+      {
+        "en": "There is no room for your piano in your room.",
+        "cn": "你房间里没地方放钢琴了。",
+        "start": 12,
+        "end": 16
+      }
+    ],
+    "example": {
+      "en": "My room has a desk beside the window.",
+      "cn": "我的房间里，窗边有一张书桌。",
+      "start": 3,
+      "end": 7
+    }
+  },
+  {
+    "word": "safe",
+    "sourceMeaning": "adj. 安全的，平安的",
+    "syllabusExamples": [
+      {
+        "en": "Friends are the people you feel safe because you know they care about you.",
+        "cn": "朋友就是那些能让你有安全感的人，因为你知道他们关心你。",
+        "start": 32,
+        "end": 36
+      },
+      {
+        "en": "Only her husband knows the number to open the safe.",
+        "cn": "只有她丈夫知道打开保险柜的密码。",
+        "start": 46,
+        "end": 50
+      }
+    ],
+    "example": {
+      "en": "Your bike is safe inside our locked garage.",
+      "cn": "你的自行车放在我们锁好的车库里很安全。",
+      "start": 13,
+      "end": 17
+    }
+  },
+  {
+    "word": "say",
+    "sourceMeaning": "v. 说；讲",
+    "syllabusExamples": [
+      {
+        "en": "“There's still a long way to go before you succeed,” the teacher said to the class.",
+        "cn": "老师对全班学生说：“在你们成功之前还有很长的路要走。”",
+        "start": 65,
+        "end": 69
+      },
+      {
+        "en": "Last but not least, at the end of the interview, don't forget to thank the interviewer and say goodbye.",
+        "cn": "最后但同样重要的是，在面试结束时，别忘了感谢面试官并说再见。",
+        "start": 91,
+        "end": 94
+      }
+    ],
+    "example": {
+      "en": "Please say your name again so I can remember it.",
+      "cn": "请再说一遍你的名字，好让我记住。",
+      "start": 7,
+      "end": 10
+    }
+  },
+  {
+    "word": "school",
+    "sourceMeaning": "n. 学校",
+    "syllabusExamples": [
+      {
+        "en": "—John was seriously injured in the school bus accident.",
+        "cn": "",
+        "start": 35,
+        "end": 41
+      }
+    ],
+    "example": {
+      "en": "We walk to school together along the river.",
+      "cn": "我们一起沿着河边步行上学。",
+      "start": 11,
+      "end": 17
+    }
+  },
+  {
+    "word": "screen",
+    "sourceMeaning": "n. 银幕，屏幕；荧光屏",
+    "syllabusExamples": [
+      {
+        "en": "You can see him on the TV screen quite often.",
+        "cn": "你可以经常在电视屏幕上见到他。",
+        "start": 26,
+        "end": 32
+      }
+    ],
+    "example": {
+      "en": "I wiped the fingerprints off my laptop screen.",
+      "cn": "我擦掉了笔记本电脑屏幕上的指纹。",
+      "start": 39,
+      "end": 45
+    }
+  },
+  {
+    "word": "sea",
+    "sourceMeaning": "n. 海，海洋",
+    "syllabusExamples": [
+      {
+        "en": "We generally go to the sea for our holidays.",
+        "cn": "我们通常去海边度假。",
+        "start": 23,
+        "end": 26
+      }
+    ],
+    "example": {
+      "en": "The children watched small boats sailing across the sea.",
+      "cn": "孩子们看着小船在海上航行。",
+      "start": 52,
+      "end": 55
+    },
+    "illustrationId": "sea"
+  },
+  {
+    "word": "sell",
+    "sourceMeaning": "v. 卖；销售",
+    "syllabusExamples": [
+      {
+        "en": "The book written by that writer didn't sell well last year.",
+        "cn": "那位作家写的这本书，去年销售情况不好。",
+        "start": 39,
+        "end": 43
+      }
+    ],
+    "example": {
+      "en": "They sell fresh bread at the market every Saturday.",
+      "cn": "他们每周六都在市场卖新鲜面包。",
+      "start": 5,
+      "end": 9
+    },
+    "illustrationId": "sell"
+  },
+  {
+    "word": "sheep",
+    "sourceMeaning": "n. （绵）羊",
+    "syllabusExamples": [
+      {
+        "en": "The old man used to raise many sheep to make a living in the west of China.",
+        "cn": "老人过去常常靠养羊在中国的西部谋生。",
+        "start": 31,
+        "end": 36
+      }
+    ],
+    "example": {
+      "en": "Several sheep were resting under a tree near the farm.",
+      "cn": "几只绵羊正在农场附近的一棵树下休息。",
+      "start": 8,
+      "end": 13
+    }
+  },
+  {
+    "word": "ship",
+    "sourceMeaning": "n. 船；轮船",
+    "syllabusExamples": [
+      {
+        "en": "Are you going to America by plane or by ship the day after tomorrow?",
+        "cn": "后天你去美国是乘飞机还是坐船？",
+        "start": 40,
+        "end": 44
+      }
+    ],
+    "example": {
+      "en": "We watched a huge ship glide into the harbour.",
+      "cn": "我们看着一艘巨轮缓缓驶入港口。",
+      "start": 18,
+      "end": 22
+    },
+    "illustrationId": "ship"
+  },
+  {
+    "word": "shop",
+    "sourceMeaning": "n. 店铺",
+    "syllabusExamples": [
+      {
+        "en": "It's not available in the shops.",
+        "cn": "商店里都没货。",
+        "start": 26,
+        "end": 31
+      },
+      {
+        "en": "He always shopped at that shop.",
+        "cn": "他总在那家商店购物。",
+        "start": 10,
+        "end": 17
+      }
+    ],
+    "example": {
+      "en": "The little shop near our house sells fresh bread.",
+      "cn": "我们家附近的小店卖新鲜面包。",
+      "start": 11,
+      "end": 15
+    },
+    "illustrationId": "shop"
+  },
+  {
+    "word": "sick",
+    "sourceMeaning": "adj. 有病的，患病的；（想）呕吐的，恶心的",
+    "syllabusExamples": [
+      {
+        "en": "On the twelfth day, the sick boy came to life.",
+        "cn": "在第12天，患病的男孩活过来了。",
+        "start": 24,
+        "end": 28
+      }
+    ],
+    "example": {
+      "en": "He stayed in bed because he felt sick this morning.",
+      "cn": "他今天早上觉得不舒服，所以一直躺在床上。",
+      "start": 33,
+      "end": 37
+    },
+    "illustrationId": "sick"
+  },
+  {
+    "word": "sing",
+    "sourceMeaning": "v. 唱，唱歌",
+    "syllabusExamples": [
+      {
+        "en": "How beautifully you sing!",
+        "cn": "你唱得多美呀！",
+        "start": 20,
+        "end": 24
+      }
+    ],
+    "example": {
+      "en": "We sing our favourite songs while washing the dishes.",
+      "cn": "我们一边洗碗，一边唱自己最喜欢的歌。",
+      "start": 3,
+      "end": 7
+    }
+  },
+  {
+    "word": "sister",
+    "sourceMeaning": "n. 姐； 妹",
+    "syllabusExamples": [
+      {
+        "en": "She's as clever as her sister is.",
+        "cn": "她和她的妹妹一样聪明。",
+        "start": 23,
+        "end": 29
+      }
+    ],
+    "example": {
+      "en": "My younger sister always borrows my favourite blue jumper.",
+      "cn": "我妹妹总是借穿我最喜欢的蓝色毛衣。",
+      "start": 11,
+      "end": 17
+    }
+  },
+  {
+    "word": "sky",
+    "sourceMeaning": "n. 天； 天空",
+    "syllabusExamples": [
+      {
+        "en": "A bright moving object appeared in the sky at sunset.",
+        "cn": "日落时分，天空中出现了一个移动的发亮物体。",
+        "start": 39,
+        "end": 42
+      }
+    ],
+    "example": {
+      "en": "The sky turned orange as we walked home.",
+      "cn": "我们步行回家时，天空变成了橙色。",
+      "start": 4,
+      "end": 7
+    }
+  },
+  {
+    "word": "snow",
+    "sourceMeaning": "n. 雪",
+    "syllabusExamples": [
+      {
+        "en": "The mountains were crowned with snow.",
+        "cn": "山上积满了雪。",
+        "start": 32,
+        "end": 36
+      },
+      {
+        "en": "In winter the more heavily it snows, the happier the children will feel.",
+        "cn": "在冬天雪下得越大，孩子们就会越快乐。",
+        "start": 30,
+        "end": 35
+      }
+    ],
+    "example": {
+      "en": "Fresh snow covered the garden when we woke up.",
+      "cn": "我们醒来时，新下的雪覆盖了花园。",
+      "start": 6,
+      "end": 10
+    },
+    "illustrationId": "snow"
+  },
+  {
+    "word": "speak",
+    "sourceMeaning": "v. 说，讲；谈话；发言",
+    "syllabusExamples": [
+      {
+        "en": "Can you tell me who will speak at the class meeting next Monday?",
+        "cn": "你能否告诉我下星期一谁将在班会上发言？",
+        "start": 25,
+        "end": 30
+      },
+      {
+        "en": "Tom speaks French most fluently in his class.",
+        "cn": "",
+        "start": 4,
+        "end": 10
+      },
+      {
+        "en": "=Nobody else in Tom's class can speak French as fluently as he.",
+        "cn": "汤姆在他班里是法语讲得最流利的。",
+        "start": 32,
+        "end": 37
+      }
+    ],
+    "example": {
+      "en": "Could I speak to you after the lesson?",
+      "cn": "下课后我能和你谈谈吗？",
+      "start": 8,
+      "end": 13
+    }
+  },
+  {
+    "word": "spring",
+    "sourceMeaning": "n. 春天，春季；泉水；弹簧",
+    "syllabusExamples": [
+      {
+        "en": "I could smell the spring in the air.",
+        "cn": "我在空气中闻到了春天的气息。",
+        "start": 18,
+        "end": 24
+      }
+    ],
+    "example": {
+      "en": "We plant flowers in the garden every spring.",
+      "cn": "我们每年春天都在花园里种花。",
+      "start": 37,
+      "end": 43
+    },
+    "illustrationId": "spring"
+  },
+  {
+    "word": "star",
+    "sourceMeaning": "n. 星；恒星；明星",
+    "syllabusExamples": [
+      {
+        "en": "The sun is a star.",
+        "cn": "太阳是一颗恒星。",
+        "start": 13,
+        "end": 17
+      }
+    ],
+    "example": {
+      "en": "We watched the stars from our tent beside the lake.",
+      "cn": "我们在湖边的帐篷里仰望星空。",
+      "start": 15,
+      "end": 20
+    }
+  },
+  {
+    "word": "station",
+    "sourceMeaning": "n. 车站；（服务）台；电台",
+    "syllabusExamples": [
+      {
+        "en": "How far is the train station from your home?",
+        "cn": "你家离火车站有多远？",
+        "start": 21,
+        "end": 28
+      }
+    ],
+    "example": {
+      "en": "We hurried to the station with our heavy suitcases.",
+      "cn": "我们提着沉重的行李箱匆忙赶往车站。",
+      "start": 18,
+      "end": 25
+    },
+    "illustrationId": "station"
+  },
+  {
+    "word": "street",
+    "sourceMeaning": "n. 街，街道",
+    "syllabusExamples": [
+      {
+        "en": "I hate the dogs that create a lot of mess in the streets.",
+        "cn": "我讨厌狗把街道搞得乱七八糟。",
+        "start": 49,
+        "end": 56
+      }
+    ],
+    "example": {
+      "en": "We crossed the street to reach the bakery.",
+      "cn": "我们穿过街道来到面包店。",
+      "start": 15,
+      "end": 21
+    },
+    "illustrationId": "street"
+  },
+  {
+    "word": "student",
+    "sourceMeaning": "n. 学生",
+    "syllabusExamples": [
+      {
+        "en": "Students can learn more effectively by discovering the answers for themselves.",
+        "cn": "学生通过自主探寻答案，能更高效地学习。",
+        "start": 0,
+        "end": 8
+      },
+      {
+        "en": "The students had an enjoyable time when they went for an outing.",
+        "cn": "当学生们去郊游时，他们度过了一段愉快的时光。",
+        "start": 4,
+        "end": 12
+      }
+    ],
+    "example": {
+      "en": "A student left her backpack under the library desk.",
+      "cn": "一名学生把背包落在了图书馆的书桌下面。",
+      "start": 2,
+      "end": 9
+    }
+  },
+  {
+    "word": "study",
+    "sourceMeaning": "v. 学习；研究",
+    "syllabusExamples": [
+      {
+        "en": "We can study in the classroom.",
+        "cn": "我们可以在教室里学习。",
+        "start": 7,
+        "end": 12
+      },
+      {
+        "en": "Biology is the study of how living things work.",
+        "cn": "生物学是研究生物功能的学科。",
+        "start": 15,
+        "end": 20
+      }
+    ],
+    "example": {
+      "en": "I study English on the bus every morning.",
+      "cn": "我每天早上在公交车上学英语。",
+      "start": 2,
+      "end": 7
+    }
+  },
+  {
+    "word": "summer",
+    "sourceMeaning": "n. 夏天，夏季",
+    "syllabusExamples": [
+      {
+        "en": "David didn't know where he was going to spend his holiday this summer.",
+        "cn": "今年夏天戴维不知道要去哪里度假。",
+        "start": 63,
+        "end": 69
+      }
+    ],
+    "example": {
+      "en": "We often eat outside during the long summer evenings.",
+      "cn": "夏天傍晚很长，我们常在户外吃饭。",
+      "start": 37,
+      "end": 43
+    }
+  },
+  {
+    "word": "sun",
+    "sourceMeaning": "n. 太阳；阳光",
+    "syllabusExamples": [
+      {
+        "en": "I want to sit in the sun.",
+        "cn": "我想在太阳下面坐一坐。",
+        "start": 21,
+        "end": 24
+      }
+    ],
+    "example": {
+      "en": "The sun appeared just as we reached the beach.",
+      "cn": "我们刚到海滩，太阳就出来了。",
+      "start": 4,
+      "end": 7
+    },
+    "illustrationId": "sun"
+  },
+  {
+    "word": "supermarket",
+    "sourceMeaning": "n. 超级市场",
+    "syllabusExamples": [
+      {
+        "en": "How far is it from the school to the nearest supermarket?",
+        "cn": "从学校到最近的超市有多远？",
+        "start": 45,
+        "end": 56
+      }
+    ],
+    "example": {
+      "en": "We stopped at the supermarket to buy milk and rice.",
+      "cn": "我们顺路去超市买了牛奶和大米。",
+      "start": 18,
+      "end": 29
+    },
+    "illustrationId": "supermarket"
+  },
+  {
+    "word": "swim",
+    "sourceMeaning": "v. & n. 游泳",
+    "syllabusExamples": [
+      {
+        "en": "Nobody taught me how to swim. I learnt it by myself.",
+        "cn": "没有人教我如何游泳。我是自学的。",
+        "start": 24,
+        "end": 28
+      },
+      {
+        "en": "When can we go for a swim?",
+        "cn": "我们什么时候可以去游泳？",
+        "start": 21,
+        "end": 25
+      }
+    ],
+    "example": {
+      "en": "We swim in the indoor pool every Saturday morning.",
+      "cn": "我们每周六早上都在室内泳池游泳。",
+      "start": 3,
+      "end": 7
+    }
+  },
+  {
+    "word": "table",
+    "sourceMeaning": "n. 桌子；表格",
+    "syllabusExamples": [
+      {
+        "en": "This ticket belongs to my brother. Yours is on the table.",
+        "cn": "这张票是我兄弟的。你的在桌子上。",
+        "start": 51,
+        "end": 56
+      }
+    ],
+    "example": {
+      "en": "We gathered around the table to share fresh bread.",
+      "cn": "我们围坐在桌边，一起吃新鲜面包。",
+      "start": 23,
+      "end": 28
+    },
+    "illustrationId": "table"
+  },
+  {
+    "word": "talk",
+    "sourceMeaning": "n. &v.谈话；讲话；演讲；交谈",
+    "syllabusExamples": [
+      {
+        "en": "The President gave a talk on TV.",
+        "cn": "总统在电视上作了一次演讲。",
+        "start": 21,
+        "end": 25
+      },
+      {
+        "en": "Sure,you can talk to me!",
+        "cn": "你当然可以和我讲话！",
+        "start": 13,
+        "end": 17
+      }
+    ],
+    "example": {
+      "en": "We talked about our weekend plans over breakfast.",
+      "cn": "我们吃早饭时聊了聊周末的计划。",
+      "start": 3,
+      "end": 9
+    }
+  },
+  {
+    "word": "tea",
+    "sourceMeaning": "n. 茶；茶叶",
+    "syllabusExamples": [
+      {
+        "en": "Tea is the most popular drink in the world besides water.",
+        "cn": "除了水，茶是世界上最流行的饮料。",
+        "start": 0,
+        "end": 3
+      }
+    ],
+    "example": {
+      "en": "I made a pot of tea while you rested.",
+      "cn": "你休息的时候，我泡了一壶茶。",
+      "start": 16,
+      "end": 19
+    },
+    "illustrationId": "tea"
+  },
+  {
+    "word": "teacher",
+    "sourceMeaning": "n. 教师",
+    "syllabusExamples": [
+      {
+        "en": "Eric won't start the experiment until his teacher shows him how to do it.",
+        "cn": "直到老师教他如何做实验，埃里克才开始动手。",
+        "start": 42,
+        "end": 49
+      }
+    ],
+    "example": {
+      "en": "Our teacher brought a plant into class today.",
+      "cn": "我们的老师今天带了一株植物来上课。",
+      "start": 4,
+      "end": 11
+    },
+    "illustrationId": "teacher"
+  },
+  {
+    "word": "television",
+    "sourceMeaning": "n. 电视",
+    "syllabusExamples": [],
+    "example": {
+      "en": "We watched a wildlife programme on television after dinner.",
+      "cn": "晚饭后我们在电视上看了一档野生动物节目。",
+      "start": 35,
+      "end": 45
+    },
+    "illustrationId": "television"
+  },
+  {
+    "word": "tell",
+    "sourceMeaning": "v. 告诉；讲述；吩咐",
+    "syllabusExamples": [
+      {
+        "en": "Who can tell me the meaning of that sign?",
+        "cn": "谁能告诉我那个标志的含义？",
+        "start": 8,
+        "end": 12
+      },
+      {
+        "en": "What useful information my father has told me!",
+        "cn": "父亲告诉了我多么有用的信息啊！",
+        "start": 38,
+        "end": 42
+      },
+      {
+        "en": "Mrs.White often tells Mike not to drive too fast.",
+        "cn": "",
+        "start": 16,
+        "end": 21
+      }
+    ],
+    "example": {
+      "en": "Please tell me what happened at school today.",
+      "cn": "请告诉我今天在学校发生了什么。",
+      "start": 7,
+      "end": 11
+    },
+    "illustrationId": "tell"
+  },
+  {
+    "word": "test",
+    "sourceMeaning": "v. &n.测试；检测；考查；试验",
+    "syllabusExamples": [
+      {
+        "en": "Either measure the temperature with a thermometer or test the water with your wrist.",
+        "cn": "要么用温度计测量水温，要么用你的手腕来试水温。",
+        "start": 53,
+        "end": 57
+      },
+      {
+        "en": "The teacher wondered if Edward had corrected his mistakes in the test paper.",
+        "cn": "老师想知道爱德华是否已纠正试卷上的错误了。",
+        "start": 65,
+        "end": 69
+      }
+    ],
+    "example": {
+      "en": "I have a spelling test at school tomorrow.",
+      "cn": "我明天在学校有拼写测验。",
+      "start": 18,
+      "end": 22
+    },
+    "illustrationId": "test"
+  },
+  {
+    "word": "thirsty",
+    "sourceMeaning": "adj. 口渴的",
+    "syllabusExamples": [
+      {
+        "en": "—Would you pass me something to drink? I'm a bit thirsty.",
+        "cn": "",
+        "start": 49,
+        "end": 56
+      }
+    ],
+    "example": {
+      "en": "I felt thirsty after walking home in the sun.",
+      "cn": "我顶着太阳走回家后觉得口渴。",
+      "start": 7,
+      "end": 14
+    }
+  },
+  {
+    "word": "ticket",
+    "sourceMeaning": "n. 票;入场券",
+    "syllabusExamples": [
+      {
+        "en": "Sarah doesn't know how she can book a plane ticket by telephone.",
+        "cn": "",
+        "start": 44,
+        "end": 50
+      },
+      {
+        "en": "=Sarah doesn't know how to book a plane ticket by telephone.",
+        "cn": "萨拉不知道怎样通过电话预订机票。",
+        "start": 40,
+        "end": 46
+      }
+    ],
+    "example": {
+      "en": "I bought a return ticket from the station machine.",
+      "cn": "我在车站的售票机上买了一张往返票。",
+      "start": 18,
+      "end": 24
+    }
+  },
+  {
+    "word": "tiger",
+    "sourceMeaning": "n. 老虎",
+    "syllabusExamples": [
+      {
+        "en": "There are tigers in the forest.",
+        "cn": "森林里有老虎。",
+        "start": 10,
+        "end": 16
+      }
+    ],
+    "example": {
+      "en": "The tiger rested in the shade beside a pool.",
+      "cn": "那只老虎在水池旁的阴凉处休息。",
+      "start": 4,
+      "end": 9
+    }
+  },
+  {
+    "word": "tooth",
+    "sourceMeaning": "n. 牙齿",
+    "syllabusExamples": [
+      {
+        "en": "It is necessary for everyone to brush his teeth after each meal.",
+        "cn": "对每个人来说，餐后刷牙是必要的。",
+        "start": 42,
+        "end": 47
+      }
+    ],
+    "example": {
+      "en": "The dentist checked each tooth with a small mirror.",
+      "cn": "牙医用一面小镜子检查了每颗牙齿。",
+      "start": 25,
+      "end": 30
+    }
+  },
+  {
+    "word": "train",
+    "sourceMeaning": "n. 火车",
+    "syllabusExamples": [
+      {
+        "en": "It is cheaper to travel by train than by air.",
+        "cn": "乘火车旅游比乘飞机便宜。",
+        "start": 27,
+        "end": 32
+      },
+      {
+        "en": "Has the train from Xizang arrived? I'm looking forward to meeting my old friends.",
+        "cn": "从西藏来的火车到了吗？我期待着见到我的老朋友们。",
+        "start": 8,
+        "end": 13
+      },
+      {
+        "en": "He is training for the astronaut.",
+        "cn": "他为成为宇航员正在接受培训。",
+        "start": 6,
+        "end": 14
+      }
+    ],
+    "example": {
+      "en": "We caught the last train home after dinner.",
+      "cn": "晚饭后，我们赶上了回家的末班火车。",
+      "start": 19,
+      "end": 24
+    },
+    "illustrationId": "train"
+  },
+  {
+    "word": "travel",
+    "sourceMeaning": "n. & v.旅行",
+    "syllabusExamples": [
+      {
+        "en": "Travel broadens the mind.",
+        "cn": "旅行使人心胸开阔。",
+        "start": 0,
+        "end": 6
+      },
+      {
+        "en": "Most people think that travelling abroad can enrich one's knowledge.",
+        "cn": "大多数人认为，出国旅游可以丰富自己的知识。",
+        "start": 23,
+        "end": 33
+      },
+      {
+        "en": "I would rather travel by train than by plane.",
+        "cn": "我宁愿乘火车也不愿乘飞机旅行。",
+        "start": 15,
+        "end": 21
+      }
+    ],
+    "example": {
+      "en": "We usually travel by train to visit our grandparents.",
+      "cn": "我们通常坐火车去看望祖父母。",
+      "start": 11,
+      "end": 17
+    },
+    "illustrationId": "travel"
+  },
+  {
+    "word": "tree",
+    "sourceMeaning": "n. 树",
+    "syllabusExamples": [
+      {
+        "en": "How often do the students in our school plant trees?",
+        "cn": "我们学校的学生多久种一次树？",
+        "start": 46,
+        "end": 51
+      }
+    ],
+    "example": {
+      "en": "A small bird built its nest in our tree.",
+      "cn": "一只小鸟在我们家的树上筑了巢。",
+      "start": 35,
+      "end": 39
+    },
+    "illustrationId": "tree"
+  },
+  {
+    "word": "trip",
+    "sourceMeaning": "n. （尤指短程往返的）旅行；旅程；旅游； 出行",
+    "syllabusExamples": [
+      {
+        "en": "We will have a one-week family trip to Harbin in the coming February.",
+        "cn": "在即将到来的二月，我们将有一次为期一周的家庭之旅去哈尔滨。",
+        "start": 31,
+        "end": 35
+      }
+    ],
+    "example": {
+      "en": "Our weekend trip to the coast was wonderfully relaxing.",
+      "cn": "我们周末的海滨之旅让人十分放松。",
+      "start": 12,
+      "end": 16
+    },
+    "illustrationId": "trip"
+  },
+  {
+    "word": "vegetable",
+    "sourceMeaning": "n. 蔬菜",
+    "syllabusExamples": [
+      {
+        "en": "I prefer vegetables to meat because they are good for my health.",
+        "cn": "比起肉我更喜欢吃蔬菜，因为它们对我的身体健康有好处。",
+        "start": 9,
+        "end": 19
+      }
+    ],
+    "example": {
+      "en": "We bought fresh vegetables at the market this morning.",
+      "cn": "我们今天早上在市场买了新鲜蔬菜。",
+      "start": 16,
+      "end": 26
+    }
+  },
+  {
+    "word": "violin",
+    "sourceMeaning": "n. 小提琴",
+    "syllabusExamples": [
+      {
+        "en": "Mary plays the violin very well.",
+        "cn": "玛丽小提琴拉得很好。",
+        "start": 15,
+        "end": 21
+      }
+    ],
+    "example": {
+      "en": "My sister practises the violin after dinner every evening.",
+      "cn": "我姐姐每天晚饭后都练习小提琴。",
+      "start": 24,
+      "end": 30
+    },
+    "illustrationId": "violin"
+  },
+  {
+    "word": "wall",
+    "sourceMeaning": "n. 墙",
+    "syllabusExamples": [
+      {
+        "en": "The wall was painted blue.",
+        "cn": "墙壁被漆成蓝色。",
+        "start": 4,
+        "end": 8
+      },
+      {
+        "en": "He who has never been to the Great Wall is not a true man.",
+        "cn": "不到长城非好汉。",
+        "start": 35,
+        "end": 39
+      }
+    ],
+    "example": {
+      "en": "We hung a colourful painting on the kitchen wall.",
+      "cn": "我们在厨房墙上挂了一幅色彩鲜艳的画。",
+      "start": 44,
+      "end": 48
+    }
+  },
+  {
+    "word": "warm",
+    "sourceMeaning": "adj. 暖和的；热情的",
+    "syllabusExamples": [
+      {
+        "en": "It is warm in spring.",
+        "cn": "春天天气暖和。",
+        "start": 6,
+        "end": 10
+      },
+      {
+        "en": "The sun's rays helped warm the earth after a long winter.",
+        "cn": "漫长的冬季过后，太阳的光线帮助温暖了大地。",
+        "start": 22,
+        "end": 26
+      }
+    ],
+    "example": {
+      "en": "This thick blanket keeps me warm on chilly evenings.",
+      "cn": "这条厚毯子让我在凉飕飕的夜晚保持暖和。",
+      "start": 28,
+      "end": 32
+    },
+    "illustrationId": "warm"
+  },
+  {
+    "word": "wash",
+    "sourceMeaning": "v. &n.洗涤，洗",
+    "syllabusExamples": [
+      {
+        "en": "Mum has washed the carpet twice and now it's spotlessly clean.",
+        "cn": "妈妈把地毯洗了两次，现在是一尘不染。",
+        "start": 8,
+        "end": 14
+      },
+      {
+        "en": "I need to give my car a good wash this weekend.",
+        "cn": "这周末我得好好洗一下车。",
+        "start": 29,
+        "end": 33
+      }
+    ],
+    "example": {
+      "en": "Please wash your hands before you help prepare dinner.",
+      "cn": "帮忙准备晚餐前，请先洗手。",
+      "start": 7,
+      "end": 11
+    },
+    "illustrationId": "wash"
+  },
+  {
+    "word": "watch",
+    "sourceMeaning": "n. 手表，表",
+    "syllabusExamples": [
+      {
+        "en": "Charlie found that he had the same watch as the driver.",
+        "cn": "查利发现他有块和司机一样的手表。",
+        "start": 35,
+        "end": 40
+      },
+      {
+        "en": "Watch your step! The floor is very slippery.",
+        "cn": "当心脚下！地板很滑。",
+        "start": 0,
+        "end": 5
+      }
+    ],
+    "example": {
+      "en": "We watched the ducks swimming across the quiet pond.",
+      "cn": "我们看着鸭子游过平静的池塘。",
+      "start": 3,
+      "end": 10
+    },
+    "illustrationId": "watch"
+  },
+  {
+    "word": "water",
+    "sourceMeaning": "n. 水",
+    "syllabusExamples": [
+      {
+        "en": "Frank held his breath under the water to search for his ring in the swimming pool.",
+        "cn": "弗兰克在水下屏住呼吸，在游泳池里寻找他的戒指。",
+        "start": 32,
+        "end": 37
+      },
+      {
+        "en": "Please tell me whether you have watered the flowers.",
+        "cn": "请告诉我你是否已给花浇过水了。",
+        "start": 32,
+        "end": 39
+      }
+    ],
+    "example": {
+      "en": "Please water the plants before we leave today.",
+      "cn": "今天出门前请给植物浇水。",
+      "start": 7,
+      "end": 12
+    }
+  },
+  {
+    "word": "weather",
+    "sourceMeaning": "n. 天气",
+    "syllabusExamples": [
+      {
+        "en": "I don't like the weather in February this year because there were many rainy days.",
+        "cn": "我不喜欢今年2月的天气，因为有很多雨天。",
+        "start": 17,
+        "end": 24
+      },
+      {
+        "en": "What fine weather! Let's go to fly kites.",
+        "cn": "多么好的天气啊！ 我们去放风筝吧。",
+        "start": 10,
+        "end": 17
+      }
+    ],
+    "example": {
+      "en": "The weather turned sunny just before our picnic.",
+      "cn": "就在我们野餐前，天气转晴了。",
+      "start": 4,
+      "end": 11
+    }
+  },
+  {
+    "word": "wind",
+    "sourceMeaning": "n. 风",
+    "syllabusExamples": [
+      {
+        "en": "Wind is a motive power.",
+        "cn": "风是一种动力。",
+        "start": 0,
+        "end": 4
+      }
+    ],
+    "example": {
+      "en": "A sudden gust of wind blew my hat away.",
+      "cn": "突然一阵风把我的帽子吹走了。",
+      "start": 17,
+      "end": 21
+    },
+    "illustrationId": "wind"
+  },
+  {
+    "word": "window",
+    "sourceMeaning": "n. 窗户；橱窗",
+    "syllabusExamples": [
+      {
+        "en": "Could you possibly open that window for me?",
+        "cn": "你能为我打开那扇窗吗？",
+        "start": 29,
+        "end": 35
+      }
+    ],
+    "example": {
+      "en": "Please open the window and let some fresh air in.",
+      "cn": "请打开窗户，让新鲜空气进来。",
+      "start": 16,
+      "end": 22
+    },
+    "illustrationId": "window"
+  },
+  {
+    "word": "winter",
+    "sourceMeaning": "n. 冬天，冬季",
+    "syllabusExamples": [
+      {
+        "en": "Miss Lin asked Dick if he was going to visit the Great Wall this winter.",
+        "cn": "林小姐问迪克今年冬天他是否要去游览长城。",
+        "start": 65,
+        "end": 71
+      }
+    ],
+    "example": {
+      "en": "We wear thick coats when winter brings cold winds.",
+      "cn": "冬天寒风来袭时，我们会穿上厚外套。",
+      "start": 25,
+      "end": 31
+    },
+    "illustrationId": "winter"
+  },
+  {
+    "word": "woman",
+    "sourceMeaning": "n. 妇女；女人",
+    "syllabusExamples": [
+      {
+        "en": "These women doctors have saved many children's lives since they worked in the hospital.",
+        "cn": "自从这些女医生在医院工作，她们救了很多孩子的生命。",
+        "start": 6,
+        "end": 11
+      },
+      {
+        "en": "Many women are more independent than before because they have jobs and earn money.",
+        "cn": "许多妇女比以前更独立，因为她们有工作、能赚钱。",
+        "start": 5,
+        "end": 10
+      }
+    ],
+    "example": {
+      "en": "The woman next door grows beautiful flowers on her balcony.",
+      "cn": "隔壁那位女士在阳台上种了漂亮的花。",
+      "start": 4,
+      "end": 9
+    }
+  },
+  {
+    "word": "write",
+    "sourceMeaning": "writer n.作家",
+    "syllabusExamples": [
+      {
+        "en": "He wrote his first symphony when he was 16.",
+        "cn": "他16岁时写了自己的第一部交响曲。",
+        "start": 3,
+        "end": 8
+      },
+      {
+        "en": "She has written four novels.",
+        "cn": "她写了4篇小说。",
+        "start": 8,
+        "end": 15
+      },
+      {
+        "en": "I wrote to let him know that I had arrived in Beijing.",
+        "cn": "我写信告诉他我已到达北京。",
+        "start": 2,
+        "end": 7
+      }
+    ],
+    "example": {
+      "en": "Please write your address on this small card.",
+      "cn": "请把你的地址写在这张小卡片上。",
+      "start": 7,
+      "end": 12
+    }
+  },
+  {
+    "word": "less",
+    "sourceMeaning": "少于 多于",
+    "syllabusExamples": [
+      {
+        "en": "The production of this factory is less than that of that factory.",
+        "cn": "这个工厂的产量少于那个工厂。",
+        "start": 34,
+        "end": 38
+      }
+    ],
+    "example": {
+      "en": "Please put less sugar in my tea this time.",
+      "cn": "这次请在我的茶里少放点糖。",
+      "start": 11,
+      "end": 15
+    },
+    "illustrationId": "less"
+  },
+  {
+    "word": "cow",
+    "sourceMeaning": "n. 母牛",
+    "syllabusExamples": [
+      {
+        "en": "Cows supply us with milk.",
+        "cn": "奶牛供给我们牛奶。",
+        "start": 0,
+        "end": 4
+      }
+    ],
+    "example": {
+      "en": "A brown cow stood quietly beside the farm gate.",
+      "cn": "一头棕色母牛静静地站在农场门旁。",
+      "start": 8,
+      "end": 11
+    }
+  },
+  {
+    "word": "notebook",
+    "sourceMeaning": "n. 笔记本",
+    "syllabusExamples": [
+      {
+        "en": "He brought out a notebook and a pen from his pocket.",
+        "cn": "他从口袋里掏出笔记本和钢笔。",
+        "start": 17,
+        "end": 25
+      }
+    ],
+    "example": {
+      "en": "She keeps a small notebook beside her bed.",
+      "cn": "她在床边放着一本小笔记本。",
+      "start": 18,
+      "end": 26
+    }
+  },
+  {
+    "word": "police",
+    "sourceMeaning": "n. 警方",
+    "syllabusExamples": [
+      {
+        "en": "It is my duty to report it to the police.",
+        "cn": "把事件报告给警方是我的责任。",
+        "start": 34,
+        "end": 40
+      }
+    ],
+    "example": {
+      "en": "The police helped us find our missing bicycle.",
+      "cn": "警方帮我们找到了丢失的自行车。",
+      "start": 4,
+      "end": 10
+    }
+  },
+  {
+    "word": "rabbit",
+    "sourceMeaning": "n. 兔子",
+    "syllabusExamples": [
+      {
+        "en": "I shall tell you a story about four little rabbits.",
+        "cn": "我要给你讲一个4只小兔子的故事。",
+        "start": 43,
+        "end": 50
+      }
+    ],
+    "example": {
+      "en": "A white rabbit hopped across the grass towards us.",
+      "cn": "一只白兔蹦蹦跳跳地穿过草地，朝我们跑来。",
+      "start": 8,
+      "end": 14
+    }
+  },
+  {
+    "word": "sofa",
+    "sourceMeaning": "n. 长沙发",
+    "syllabusExamples": [
+      {
+        "en": "He lay down on the sofa and soon fell asleep.",
+        "cn": "他在沙发上躺下，很快就睡着了。",
+        "start": 19,
+        "end": 23
+      }
+    ],
+    "example": {
+      "en": "We curled up on the sofa after dinner.",
+      "cn": "晚饭后，我们蜷坐在沙发上。",
+      "start": 20,
+      "end": 24
+    },
+    "illustrationId": "sofa"
+  },
+  {
+    "word": "roof",
+    "sourceMeaning": "n. 屋顶；顶部",
+    "syllabusExamples": [
+      {
+        "en": "There is a cat on the roof.",
+        "cn": "屋顶上有一只猫。",
+        "start": 22,
+        "end": 26
+      }
+    ],
+    "example": {
+      "en": "Rain drummed on the roof throughout the night.",
+      "cn": "雨点整夜敲打着屋顶。",
+      "start": 20,
+      "end": 24
+    }
+  },
+  {
+    "word": "zebra",
+    "sourceMeaning": "n. 斑马",
+    "syllabusExamples": [
+      {
+        "en": "We saw a group of zebras in the zoo.",
+        "cn": "我们在动物园里看到了一群斑马。",
+        "start": 18,
+        "end": 24
+      }
+    ],
+    "example": {
+      "en": "A zebra stood quietly beside the watering hole.",
+      "cn": "一匹斑马静静地站在水塘旁。",
+      "start": 2,
+      "end": 7
+    },
+    "illustrationId": "zebra"
+  },
+  {
+    "word": "device",
+    "sourceMeaning": "n. 仪器",
+    "syllabusExamples": [
+      {
+        "en": "This is a new device for measuring temperature.",
+        "cn": "这是一种测量温度的新仪器。",
+        "start": 14,
+        "end": 20
+      }
+    ],
+    "example": {
+      "en": "This tiny device tracks my steps throughout the day.",
+      "cn": "这个小装置会记录我一整天的步数。",
+      "start": 10,
+      "end": 16
+    }
+  }
+]

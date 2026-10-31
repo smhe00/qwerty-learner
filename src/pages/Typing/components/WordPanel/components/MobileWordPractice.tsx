@@ -1,5 +1,7 @@
 import { getDictionaryContent } from '@/utils/dictionaryContent'
 import DesktopStudyIllustration from '@/components/DesktopStudyIllustration'
+import SyllabusExamples from '@/components/SyllabusExamples'
+import { getStudyPresentation } from '@/resources/studyExamples'
 import DictionaryContent from '@/components/DictionaryContent'
 import MobilePracticeExample from './MobilePracticeExample'
 import MobilePhonetic from '@/pages/Mobile/MobilePhonetic'
@@ -34,7 +36,7 @@ import type { Word } from '@/typings'
 import { useWordRecordCommit } from '@/hooks/useWordRecordCommit'
 import { db } from '@/utils/db/core'
 import type { LearningContextV1 } from '@/utils/db/record'
-import { getFirstValidDictionaryExample, maskDictionaryExample } from '@/utils/dictionaryExample'
+import { maskDictionaryExample } from '@/utils/dictionaryExample'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { Hand, Headphones, Keyboard, Volume2, Wand2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -224,7 +226,8 @@ export default function MobileWordPractice({
     }
   }, [word.name, dict.id])
 
-  const example = useMemo(() => getFirstValidDictionaryExample(word), [word])
+  const presentation = useMemo(() => getStudyPresentation(dict.id, word, desktop), [dict.id, word, desktop])
+  const example = presentation.example
   const maskedExample = useMemo(() => (example ? maskDictionaryExample(example) : null), [example])
   const exampleFontSize = !desktop
     ? 'clamp(14px, 3.8vw, 17px)'
@@ -774,7 +777,9 @@ export default function MobileWordPractice({
             answerVisible={task !== 'spelling' || Boolean(feedback)}>{wordHeading}</DesktopStudyIllustration> : wordHeading}
         </div>
 
-        <div className="mobile-practice-example-slot" data-mobile-example-slot>
+        <div className="mobile-practice-example-slot" data-mobile-example-slot data-study-example-source={presentation.source}>
+          {presentation.source === 'daily' && (feedback || ['exposure', 'spelling', 'recall', 'context'].includes(task)) &&
+            <p className="mb-1 text-xs text-slate-600 dark:text-slate-300">日常例句</p>}
           {feedback || task === 'exposure' ? (
             renderExample(true)
           ) : task === 'spelling' ? (
@@ -852,6 +857,8 @@ export default function MobileWordPractice({
                 {example.cn}
               </p>
             )}
+            {desktop && (feedback || task === 'exposure' || (task === 'recall' && Boolean(revealedAttempt))) &&
+              <SyllabusExamples examples={presentation.syllabusExamples} onInspect={holdReading} />}
           </div>
         </div>
       </div>

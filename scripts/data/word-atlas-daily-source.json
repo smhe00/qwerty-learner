@@ -1,0 +1,1981 @@
+{
+  "source": {
+    "repository": "https://github.com/designfuchen/word-atlas",
+    "commit": "99c007673d38f02c418d8e4cd2e9ec90b5d40be5",
+    "license": "CC BY 4.0",
+    "attribution": "Word Atlas contributors"
+  },
+  "entries": [
+    {
+      "word": "ability",
+      "sourceId": "ability",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/8.json",
+      "example": {
+        "en": "Her ability to fix bicycles impressed all her friends.",
+        "zh": "她修自行车的本领让朋友们都很佩服。"
+      }
+    },
+    {
+      "word": "able",
+      "sourceId": "able",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/12.json",
+      "example": {
+        "en": "I am finally able to swim across the pool.",
+        "zh": "我终于能够游到泳池的另一端了。"
+      }
+    },
+    {
+      "word": "bakery",
+      "sourceId": "bakery",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/15.json",
+      "example": {
+        "en": "The bakery near our house sells warm bread every morning.",
+        "zh": "我们家附近的面包店每天早上都卖热乎乎的面包。"
+      }
+    },
+    {
+      "word": "apple",
+      "sourceId": "apple",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "I packed an apple and a sandwich for lunch.",
+        "zh": "我装了一个苹果和一个三明治当午餐。"
+      }
+    },
+    {
+      "word": "banana",
+      "sourceId": "banana",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "He peeled a banana and sliced it over his cereal.",
+        "zh": "他剥了一根香蕉，切成片放在麦片上。"
+      }
+    },
+    {
+      "word": "orange",
+      "sourceId": "orange",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "I peeled an orange and shared it with my sister.",
+        "zh": "我剥了一个橙子，和妹妹分着吃。"
+      }
+    },
+    {
+      "word": "bread",
+      "sourceId": "bread",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "Fresh bread was cooling beside the kitchen window.",
+        "zh": "刚出炉的面包放在厨房窗边晾凉。"
+      }
+    },
+    {
+      "word": "breakfast",
+      "sourceId": "breakfast",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "I usually have breakfast before taking the bus.",
+        "zh": "我通常吃完早餐再去坐公交车。"
+      }
+    },
+    {
+      "word": "lunch",
+      "sourceId": "lunch",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "We ate lunch under a tree beside the river.",
+        "zh": "我们在河边的一棵树下吃了午饭。"
+      }
+    },
+    {
+      "word": "dinner",
+      "sourceId": "dinner",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "Dinner is ready, so please bring the plates.",
+        "zh": "晚饭做好了，请把盘子拿来。"
+      }
+    },
+    {
+      "word": "milk",
+      "sourceId": "milk",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "I poured some cold milk over my cereal.",
+        "zh": "我往麦片上倒了些冷牛奶。"
+      }
+    },
+    {
+      "word": "water",
+      "sourceId": "water",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "Please water the plants before we leave today.",
+        "zh": "今天出门前请给植物浇水。"
+      }
+    },
+    {
+      "word": "tea",
+      "sourceId": "tea",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "I made a pot of tea while you rested.",
+        "zh": "你休息的时候，我泡了一壶茶。"
+      }
+    },
+    {
+      "word": "coffee",
+      "sourceId": "coffee",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "I drink coffee with milk before leaving for work.",
+        "zh": "我上班出门前会喝一杯加奶咖啡。"
+      }
+    },
+    {
+      "word": "juice",
+      "sourceId": "juice",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "She squeezed fresh orange juice into a glass.",
+        "zh": "她把鲜橙汁挤进了玻璃杯里。"
+      }
+    },
+    {
+      "word": "rice",
+      "sourceId": "rice",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "We had rice with steamed fish for dinner.",
+        "zh": "我们晚餐吃了米饭和清蒸鱼。"
+      }
+    },
+    {
+      "word": "meat",
+      "sourceId": "meat",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "We keep raw meat separate from vegetables in the fridge.",
+        "zh": "我们把生肉和蔬菜分开放在冰箱里。"
+      }
+    },
+    {
+      "word": "fish",
+      "sourceId": "fish",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "We watched small fish swimming under the wooden bridge.",
+        "zh": "我们看着小鱼在木桥下游动。"
+      }
+    },
+    {
+      "word": "egg",
+      "sourceId": "egg",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "She cracked an egg into the hot frying pan.",
+        "zh": "她把一个鸡蛋打进了热煎锅。"
+      }
+    },
+    {
+      "word": "chicken",
+      "sourceId": "chicken",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "The chickens scratched the soil beside our vegetable patch.",
+        "zh": "那些鸡在我们的菜地旁刨土。"
+      }
+    },
+    {
+      "word": "cake",
+      "sourceId": "cake",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "We shared a slice of lemon cake after lunch.",
+        "zh": "午饭后，我们分着吃了一片柠檬蛋糕。"
+      }
+    },
+    {
+      "word": "cheese",
+      "sourceId": "cheese",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "I added some cheese to my warm vegetable sandwich.",
+        "zh": "我在热乎乎的蔬菜三明治里加了些奶酪。"
+      }
+    },
+    {
+      "word": "fruit",
+      "sourceId": "fruit",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "She packed fresh fruit in my lunch box.",
+        "zh": "她在我的午餐盒里放了新鲜水果。"
+      }
+    },
+    {
+      "word": "vegetable",
+      "sourceId": "vegetable",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "We bought fresh vegetables at the market this morning.",
+        "zh": "我们今天早上在市场买了新鲜蔬菜。"
+      }
+    },
+    {
+      "word": "food",
+      "sourceId": "food",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "We packed enough food for a picnic by the lake.",
+        "zh": "我们带了足够的食物，准备在湖边野餐。"
+      }
+    },
+    {
+      "word": "cook",
+      "sourceId": "cook",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "I usually cook vegetable soup when the weather turns cold.",
+        "zh": "天气变冷时，我通常会煮蔬菜汤。"
+      }
+    },
+    {
+      "word": "kitchen",
+      "sourceId": "kitchen",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "The kitchen smells of fresh bread and roasted vegetables.",
+        "zh": "厨房里飘着新鲜面包和烤蔬菜的香味。"
+      }
+    },
+    {
+      "word": "restaurant",
+      "sourceId": "restaurant",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "We found a quiet restaurant beside the river.",
+        "zh": "我们在河边找到了一家安静的餐馆。"
+      }
+    },
+    {
+      "word": "menu",
+      "sourceId": "menu",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "There are several vegetarian dishes on the menu.",
+        "zh": "菜单上有几道素菜。"
+      }
+    },
+    {
+      "word": "hungry",
+      "sourceId": "hungry",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "I felt hungry after our long walk by the river.",
+        "zh": "在河边走了很久之后，我觉得饿了。"
+      }
+    },
+    {
+      "word": "thirsty",
+      "sourceId": "thirsty",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "I felt thirsty after walking home in the sun.",
+        "zh": "我顶着太阳走回家后觉得口渴。"
+      }
+    },
+    {
+      "word": "eat",
+      "sourceId": "eat",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "We usually eat breakfast together before leaving the house.",
+        "zh": "我们通常一起吃完早饭再出门。"
+      }
+    },
+    {
+      "word": "drink",
+      "sourceId": "drink",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "I always drink some water after walking the dog.",
+        "zh": "我遛完狗总会喝些水。"
+      }
+    },
+    {
+      "word": "buy",
+      "sourceId": "buy",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "I need to buy some bread before breakfast.",
+        "zh": "我需要在吃早饭前买些面包。"
+      }
+    },
+    {
+      "word": "sell",
+      "sourceId": "sell",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "They sell fresh bread at the market every Saturday.",
+        "zh": "他们每周六都在市场卖新鲜面包。"
+      }
+    },
+    {
+      "word": "shop",
+      "sourceId": "shop",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "The little shop near our house sells fresh bread.",
+        "zh": "我们家附近的小店卖新鲜面包。"
+      }
+    },
+    {
+      "word": "market",
+      "sourceId": "market",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "We bought fresh peaches at the market this morning.",
+        "zh": "今天早上我们在集市买了新鲜桃子。"
+      }
+    },
+    {
+      "word": "supermarket",
+      "sourceId": "supermarket",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "We stopped at the supermarket to buy milk and rice.",
+        "zh": "我们顺路去超市买了牛奶和大米。"
+      }
+    },
+    {
+      "word": "money",
+      "sourceId": "money",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "I saved enough money to buy a new bicycle.",
+        "zh": "我攒够了买一辆新自行车的钱。"
+      }
+    },
+    {
+      "word": "price",
+      "sourceId": "price",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "The price of fresh strawberries has fallen this week.",
+        "zh": "这周新鲜草莓的价格降了。"
+      }
+    },
+    {
+      "word": "cheap",
+      "sourceId": "cheap",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "We found a cheap café near the train station.",
+        "zh": "我们在火车站附近找到了一家价格实惠的咖啡馆。"
+      }
+    },
+    {
+      "word": "expensive",
+      "sourceId": "expensive",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "These boots are too expensive for my budget.",
+        "zh": "这双靴子太贵，超出了我的预算。"
+      }
+    },
+    {
+      "word": "pay",
+      "sourceId": "pay",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "Can I pay for these apples by card?",
+        "zh": "这些苹果可以刷卡付款吗？"
+      }
+    },
+    {
+      "word": "book",
+      "sourceId": "book",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "I left my book on the kitchen table.",
+        "zh": "我把书落在厨房的桌子上了。"
+      }
+    },
+    {
+      "word": "library",
+      "sourceId": "library",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "I borrowed three books from the library after school.",
+        "zh": "放学后，我从图书馆借了三本书。"
+      }
+    },
+    {
+      "word": "read",
+      "sourceId": "read",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "I read a few pages before bed every night.",
+        "zh": "我每天晚上睡前都会读几页书。"
+      }
+    },
+    {
+      "word": "write",
+      "sourceId": "write",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "Please write your address on this small card.",
+        "zh": "请把你的地址写在这张小卡片上。"
+      }
+    },
+    {
+      "word": "pen",
+      "sourceId": "pen",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "Could you lend me a pen for this form?",
+        "zh": "你能借我一支笔填这张表吗？"
+      }
+    },
+    {
+      "word": "pencil",
+      "sourceId": "pencil",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "She sharpened her pencil before sketching the sleeping cat.",
+        "zh": "她削好铅笔，开始画那只熟睡的猫。"
+      }
+    },
+    {
+      "word": "paper",
+      "sourceId": "paper",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "She wrapped the small gift in bright yellow paper.",
+        "zh": "她用鲜黄色的纸把小礼物包了起来。"
+      }
+    },
+    {
+      "word": "notebook",
+      "sourceId": "notebook",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "She keeps a small notebook beside her bed.",
+        "zh": "她在床边放着一本小笔记本。"
+      }
+    },
+    {
+      "word": "desk",
+      "sourceId": "desk",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "I keep my pencils in the top desk drawer.",
+        "zh": "我把铅笔放在书桌最上面的抽屉里。"
+      }
+    },
+    {
+      "word": "chair",
+      "sourceId": "chair",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "She pulled a chair closer to the window.",
+        "zh": "她把一把椅子拉到离窗户更近的地方。"
+      }
+    },
+    {
+      "word": "school",
+      "sourceId": "school",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "We walk to school together along the river.",
+        "zh": "我们一起沿着河边步行上学。"
+      }
+    },
+    {
+      "word": "classroom",
+      "sourceId": "classroom",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "Sunlight filled the classroom as we opened our books.",
+        "zh": "我们打开书本时，阳光洒满了教室。"
+      }
+    },
+    {
+      "word": "student",
+      "sourceId": "student",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "A student left her backpack under the library desk.",
+        "zh": "一名学生把背包落在了图书馆的书桌下面。"
+      }
+    },
+    {
+      "word": "teacher",
+      "sourceId": "teacher",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "Our teacher brought a plant into class today.",
+        "zh": "我们的老师今天带了一株植物来上课。"
+      }
+    },
+    {
+      "word": "learn",
+      "sourceId": "learn",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "My grandfather is learning to swim at the local pool.",
+        "zh": "我爷爷正在附近的游泳池学游泳。"
+      }
+    },
+    {
+      "word": "study",
+      "sourceId": "study",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "I study English on the bus every morning.",
+        "zh": "我每天早上在公交车上学英语。"
+      }
+    },
+    {
+      "word": "homework",
+      "sourceId": "homework",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "I finished my homework before dinner and went outside.",
+        "zh": "我在晚饭前做完了作业，然后出门了。"
+      }
+    },
+    {
+      "word": "lesson",
+      "sourceId": "lesson",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "Our swimming lesson starts after school on Thursday.",
+        "zh": "我们的游泳课在周四放学后开始。"
+      }
+    },
+    {
+      "word": "exam",
+      "sourceId": "exam",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "I have a maths exam on Friday morning.",
+        "zh": "我周五上午有一场数学考试。"
+      }
+    },
+    {
+      "word": "test",
+      "sourceId": "test",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "I have a spelling test at school tomorrow.",
+        "zh": "我明天在学校有拼写测验。"
+      }
+    },
+    {
+      "word": "question",
+      "sourceId": "question",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "I raised my hand to ask the teacher a question.",
+        "zh": "我举手向老师提了一个问题。"
+      }
+    },
+    {
+      "word": "answer",
+      "sourceId": "answer",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "I asked the price, but nobody gave an answer.",
+        "zh": "我问了价格，却没有人回答。"
+      }
+    },
+    {
+      "word": "English",
+      "sourceId": "english",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "We practise English together while walking home from college.",
+        "zh": "我们从学院步行回家时一起练习英语。"
+      }
+    },
+    {
+      "word": "language",
+      "sourceId": "language",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "My neighbour teaches me a little of her language.",
+        "zh": "邻居教我一点她的语言。"
+      }
+    },
+    {
+      "word": "speak",
+      "sourceId": "speak",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "Could I speak to you after the lesson?",
+        "zh": "下课后我能和你谈谈吗？"
+      }
+    },
+    {
+      "word": "listen",
+      "sourceId": "listen",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "I listen to music while cooking dinner every evening.",
+        "zh": "每天晚上做饭时，我都会听音乐。"
+      }
+    },
+    {
+      "word": "hear",
+      "sourceId": "hear",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "I can hear birds singing outside my bedroom window.",
+        "zh": "我能听见卧室窗外的鸟鸣声。"
+      }
+    },
+    {
+      "word": "talk",
+      "sourceId": "talk",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "We talked about our weekend plans over breakfast.",
+        "zh": "我们吃早饭时聊了聊周末的计划。"
+      }
+    },
+    {
+      "word": "say",
+      "sourceId": "say",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "Please say your name again so I can remember it.",
+        "zh": "请再说一遍你的名字，好让我记住。"
+      }
+    },
+    {
+      "word": "tell",
+      "sourceId": "tell",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "Please tell me what happened at school today.",
+        "zh": "请告诉我今天在学校发生了什么。"
+      }
+    },
+    {
+      "word": "sing",
+      "sourceId": "sing",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "We sing our favourite songs while washing the dishes.",
+        "zh": "我们一边洗碗，一边唱自己最喜欢的歌。"
+      }
+    },
+    {
+      "word": "music",
+      "sourceId": "music",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "Soft music drifted through the kitchen while we cooked.",
+        "zh": "我们做饭时，轻柔的音乐在厨房里飘荡。"
+      }
+    },
+    {
+      "word": "piano",
+      "sourceId": "piano",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "My sister practises the piano after dinner every evening.",
+        "zh": "我姐姐每天晚饭后练钢琴。"
+      }
+    },
+    {
+      "word": "guitar",
+      "sourceId": "guitar",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "My sister plays the guitar beside the window every evening.",
+        "zh": "我姐姐每天晚上都在窗边弹吉他。"
+      }
+    },
+    {
+      "word": "violin",
+      "sourceId": "violin",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/8.json",
+      "example": {
+        "en": "My sister practises the violin after dinner every evening.",
+        "zh": "我姐姐每天晚饭后都练习小提琴。"
+      }
+    },
+    {
+      "word": "dance",
+      "sourceId": "dance",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "We danced in the kitchen while dinner was cooking.",
+        "zh": "晚饭还在做的时候，我们在厨房里跳起了舞。"
+      }
+    },
+    {
+      "word": "draw",
+      "sourceId": "draw",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "She drew a sleeping cat in her sketchbook.",
+        "zh": "她在素描本上画了一只熟睡的猫。"
+      }
+    },
+    {
+      "word": "picture",
+      "sourceId": "picture",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "She hung a picture of the sea above her bed.",
+        "zh": "她在床头上方挂了一幅海景画。"
+      }
+    },
+    {
+      "word": "photo",
+      "sourceId": "photo",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "We took a photo beside the old bridge.",
+        "zh": "我们在那座老桥旁拍了张照片。"
+      }
+    },
+    {
+      "word": "camera",
+      "sourceId": "camera",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "She raised her camera to photograph the sleeping cat.",
+        "zh": "她举起相机，给熟睡的猫拍照。"
+      }
+    },
+    {
+      "word": "film",
+      "sourceId": "film",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "We watched a funny film after dinner yesterday.",
+        "zh": "昨天晚饭后，我们看了一部有趣的电影。"
+      }
+    },
+    {
+      "word": "cinema",
+      "sourceId": "cinema",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "We met outside the cinema and bought some popcorn.",
+        "zh": "我们在电影院外碰面，买了些爆米花。"
+      }
+    },
+    {
+      "word": "ticket",
+      "sourceId": "ticket",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "I bought a return ticket from the station machine.",
+        "zh": "我在车站的售票机上买了一张往返票。"
+      }
+    },
+    {
+      "word": "park",
+      "sourceId": "park",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "We shared a picnic under the trees in the park.",
+        "zh": "我们在公园的树下共进了野餐。"
+      }
+    },
+    {
+      "word": "garden",
+      "sourceId": "garden",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "We picked fresh beans from the garden before lunch.",
+        "zh": "午饭前，我们从菜园里摘了新鲜的豆角。"
+      }
+    },
+    {
+      "word": "flower",
+      "sourceId": "flower",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "She placed fresh flowers in a vase by the window.",
+        "zh": "她把鲜花插进窗边的花瓶里。"
+      }
+    },
+    {
+      "word": "tree",
+      "sourceId": "tree",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "A small bird built its nest in our tree.",
+        "zh": "一只小鸟在我们家的树上筑了巢。"
+      }
+    },
+    {
+      "word": "grass",
+      "sourceId": "grass",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "We spread a blanket on the grass beside the river.",
+        "zh": "我们在河边的草地上铺了一条毯子。"
+      }
+    },
+    {
+      "word": "forest",
+      "sourceId": "forest",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/8.json",
+      "example": {
+        "en": "We followed a narrow path deep into the forest.",
+        "zh": "我们沿着一条狭窄的小路走进森林深处。"
+      }
+    },
+    {
+      "word": "mountain",
+      "sourceId": "mountain",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "Snow covered the mountain even in the middle of summer.",
+        "zh": "即使在盛夏，那座山仍被白雪覆盖。"
+      }
+    },
+    {
+      "word": "river",
+      "sourceId": "river",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "We watched ducks swimming across the river this morning.",
+        "zh": "今天早上，我们看着鸭子游过河面。"
+      }
+    },
+    {
+      "word": "lake",
+      "sourceId": "lake",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/17.json",
+      "example": {
+        "en": "We rented a small boat and crossed the lake.",
+        "zh": "我们租了一条小船，划到了湖对岸。"
+      }
+    },
+    {
+      "word": "sea",
+      "sourceId": "sea",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "The children watched small boats sailing across the sea.",
+        "zh": "孩子们看着小船在海上航行。"
+      }
+    },
+    {
+      "word": "beach",
+      "sourceId": "beach",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "We collected smooth stones on the beach after breakfast.",
+        "zh": "早餐后，我们在海滩上捡了些光滑的石头。"
+      }
+    },
+    {
+      "word": "island",
+      "sourceId": "island",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/12.json",
+      "example": {
+        "en": "We took a small boat to the island yesterday.",
+        "zh": "昨天我们乘小船去了那座岛。"
+      }
+    },
+    {
+      "word": "sky",
+      "sourceId": "sky",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "The sky turned orange as we walked home.",
+        "zh": "我们步行回家时，天空变成了橙色。"
+      }
+    },
+    {
+      "word": "sun",
+      "sourceId": "sun",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "The sun appeared just as we reached the beach.",
+        "zh": "我们刚到海滩，太阳就出来了。"
+      }
+    },
+    {
+      "word": "moon",
+      "sourceId": "moon",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/10.json",
+      "example": {
+        "en": "The moon rose slowly above the trees behind our house.",
+        "zh": "月亮在我们屋后的树梢上缓缓升起。"
+      }
+    },
+    {
+      "word": "star",
+      "sourceId": "star",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "We watched the stars from our tent beside the lake.",
+        "zh": "我们在湖边的帐篷里仰望星空。"
+      }
+    },
+    {
+      "word": "cloud",
+      "sourceId": "cloud",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "A dark cloud drifted slowly across the afternoon sky.",
+        "zh": "一朵乌云缓缓飘过午后的天空。"
+      }
+    },
+    {
+      "word": "rain",
+      "sourceId": "rain",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "Heavy rain kept us inside for the whole afternoon.",
+        "zh": "大雨让我们整个下午都待在屋里。"
+      }
+    },
+    {
+      "word": "snow",
+      "sourceId": "snow",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "Fresh snow covered the garden when we woke up.",
+        "zh": "我们醒来时，新下的雪覆盖了花园。"
+      }
+    },
+    {
+      "word": "wind",
+      "sourceId": "wind",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/17.json",
+      "example": {
+        "en": "A sudden gust of wind blew my hat away.",
+        "zh": "突然一阵风把我的帽子吹走了。"
+      }
+    },
+    {
+      "word": "weather",
+      "sourceId": "weather",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "The weather turned sunny just before our picnic.",
+        "zh": "就在我们野餐前，天气转晴了。"
+      }
+    },
+    {
+      "word": "hot",
+      "sourceId": "hot",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "Be careful; the soup is still very hot.",
+        "zh": "小心，汤还很烫。"
+      }
+    },
+    {
+      "word": "cold",
+      "sourceId": "cold",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "My hands were cold, so I put on gloves.",
+        "zh": "我的手很冷，于是戴上了手套。"
+      }
+    },
+    {
+      "word": "warm",
+      "sourceId": "warm",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "This thick blanket keeps me warm on chilly evenings.",
+        "zh": "这条厚毯子让我在凉飕飕的夜晚保持暖和。"
+      }
+    },
+    {
+      "word": "cool",
+      "sourceId": "cool",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "A cool breeze drifted through the open kitchen window.",
+        "zh": "一阵凉爽的微风从敞开的厨房窗户吹了进来。"
+      }
+    },
+    {
+      "word": "spring",
+      "sourceId": "spring",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "We plant flowers in the garden every spring.",
+        "zh": "我们每年春天都在花园里种花。"
+      }
+    },
+    {
+      "word": "summer",
+      "sourceId": "summer",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "We often eat outside during the long summer evenings.",
+        "zh": "夏天傍晚很长，我们常在户外吃饭。"
+      }
+    },
+    {
+      "word": "autumn",
+      "sourceId": "autumn",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "We collect fallen leaves in the park every autumn.",
+        "zh": "我们每年秋天都在公园里收集落叶。"
+      }
+    },
+    {
+      "word": "winter",
+      "sourceId": "winter",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "We wear thick coats when winter brings cold winds.",
+        "zh": "冬天寒风来袭时，我们会穿上厚外套。"
+      }
+    },
+    {
+      "word": "swim",
+      "sourceId": "swim",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "We swim in the indoor pool every Saturday morning.",
+        "zh": "我们每周六早上都在室内泳池游泳。"
+      }
+    },
+    {
+      "word": "pool",
+      "sourceId": "pool",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "We spent the afternoon swimming in the outdoor pool.",
+        "zh": "我们整个下午都在室外游泳池游泳。"
+      }
+    },
+    {
+      "word": "bicycle",
+      "sourceId": "bicycle",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "I locked my bicycle outside the small bakery.",
+        "zh": "我把自行车锁在那家小面包店外面。"
+      }
+    },
+    {
+      "word": "bus",
+      "sourceId": "bus",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "We caught the last bus home after the concert.",
+        "zh": "音乐会结束后，我们赶上了回家的末班公交车。"
+      }
+    },
+    {
+      "word": "car",
+      "sourceId": "car",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "Our car is parked under the tree outside.",
+        "zh": "我们的汽车停在外面的树下。"
+      }
+    },
+    {
+      "word": "train",
+      "sourceId": "train",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "We caught the last train home after dinner.",
+        "zh": "晚饭后，我们赶上了回家的末班火车。"
+      }
+    },
+    {
+      "word": "plane",
+      "sourceId": "plane",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "Our plane landed just before the rain began.",
+        "zh": "我们的飞机刚降落，雨就下起来了。"
+      }
+    },
+    {
+      "word": "ship",
+      "sourceId": "ship",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/17.json",
+      "example": {
+        "en": "We watched a huge ship glide into the harbour.",
+        "zh": "我们看着一艘巨轮缓缓驶入港口。"
+      }
+    },
+    {
+      "word": "boat",
+      "sourceId": "boat",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "We hired a small boat and explored the lake.",
+        "zh": "我们租了一条小船，游览了湖面。"
+      }
+    },
+    {
+      "word": "travel",
+      "sourceId": "travel",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "We usually travel by train to visit our grandparents.",
+        "zh": "我们通常坐火车去看望祖父母。"
+      }
+    },
+    {
+      "word": "trip",
+      "sourceId": "trip",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "Our weekend trip to the coast was wonderfully relaxing.",
+        "zh": "我们周末的海滨之旅让人十分放松。"
+      }
+    },
+    {
+      "word": "holiday",
+      "sourceId": "holiday",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "We spent our holiday swimming and exploring quiet villages.",
+        "zh": "我们假期里游泳，还探访了宁静的村庄。"
+      }
+    },
+    {
+      "word": "hotel",
+      "sourceId": "hotel",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "Our hotel room overlooks a quiet sandy beach.",
+        "zh": "我们住的酒店房间可以俯瞰一片宁静的沙滩。"
+      }
+    },
+    {
+      "word": "airport",
+      "sourceId": "airport",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "We arrived at the airport before the sun rose.",
+        "zh": "太阳还没升起，我们就到了机场。"
+      }
+    },
+    {
+      "word": "station",
+      "sourceId": "station",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "We hurried to the station with our heavy suitcases.",
+        "zh": "我们提着沉重的行李箱匆忙赶往车站。"
+      }
+    },
+    {
+      "word": "street",
+      "sourceId": "street",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "We crossed the street to reach the bakery.",
+        "zh": "我们穿过街道来到面包店。"
+      }
+    },
+    {
+      "word": "road",
+      "sourceId": "road",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "Look both ways before you cross the road.",
+        "zh": "过马路前要向两边看。"
+      }
+    },
+    {
+      "word": "bridge",
+      "sourceId": "bridge",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/9.json",
+      "example": {
+        "en": "We crossed the wooden bridge and entered the village.",
+        "zh": "我们走过木桥，进了村子。"
+      }
+    },
+    {
+      "word": "house",
+      "sourceId": "house",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "Their house has a small garden behind the kitchen.",
+        "zh": "他们的房子在厨房后面有一个小花园。"
+      }
+    },
+    {
+      "word": "home",
+      "sourceId": "home",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "We walked home together after dinner at the café.",
+        "zh": "在咖啡馆吃过晚饭后，我们一起走回家。"
+      }
+    },
+    {
+      "word": "room",
+      "sourceId": "room",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "My room has a desk beside the window.",
+        "zh": "我的房间里，窗边有一张书桌。"
+      }
+    },
+    {
+      "word": "bedroom",
+      "sourceId": "bedroom",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "My bedroom gets plenty of sunlight in the morning.",
+        "zh": "我的卧室早晨阳光很充足。"
+      }
+    },
+    {
+      "word": "bathroom",
+      "sourceId": "bathroom",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "She hung a clean towel beside the bathroom sink.",
+        "zh": "她在浴室洗手池旁挂了一条干净毛巾。"
+      }
+    },
+    {
+      "word": "window",
+      "sourceId": "window",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "Please open the window and let some fresh air in.",
+        "zh": "请打开窗户，让新鲜空气进来。"
+      }
+    },
+    {
+      "word": "door",
+      "sourceId": "door",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "Please close the door before the cat gets out.",
+        "zh": "请关上门，别让猫跑出去。"
+      }
+    },
+    {
+      "word": "floor",
+      "sourceId": "floor",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "My keys fell onto the kitchen floor again.",
+        "zh": "我的钥匙又掉到厨房地板上了。"
+      }
+    },
+    {
+      "word": "wall",
+      "sourceId": "wall",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "We hung a colourful painting on the kitchen wall.",
+        "zh": "我们在厨房墙上挂了一幅色彩鲜艳的画。"
+      }
+    },
+    {
+      "word": "roof",
+      "sourceId": "roof",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/16.json",
+      "example": {
+        "en": "Rain drummed on the roof throughout the night.",
+        "zh": "雨点整夜敲打着屋顶。"
+      }
+    },
+    {
+      "word": "table",
+      "sourceId": "table",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "We gathered around the table to share fresh bread.",
+        "zh": "我们围坐在桌边，一起吃新鲜面包。"
+      }
+    },
+    {
+      "word": "bed",
+      "sourceId": "bed",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "The cat curled up on my bed after lunch.",
+        "zh": "午饭后，猫蜷缩在我的床上。"
+      }
+    },
+    {
+      "word": "sofa",
+      "sourceId": "sofa",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "We curled up on the sofa after dinner.",
+        "zh": "晚饭后，我们蜷坐在沙发上。"
+      }
+    },
+    {
+      "word": "clock",
+      "sourceId": "clock",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "The kitchen clock stopped while we were making lunch.",
+        "zh": "我们做午饭时，厨房的时钟停了。"
+      }
+    },
+    {
+      "word": "watch",
+      "sourceId": "watch",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "We watched the ducks swimming across the quiet pond.",
+        "zh": "我们看着鸭子游过平静的池塘。"
+      }
+    },
+    {
+      "word": "computer",
+      "sourceId": "computer",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "My computer froze while I was editing holiday photos.",
+        "zh": "我编辑度假照片时，电脑卡住了。"
+      }
+    },
+    {
+      "word": "phone",
+      "sourceId": "phone",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "My phone rang while I was washing the dishes.",
+        "zh": "我洗碗时，电话响了。"
+      }
+    },
+    {
+      "word": "television",
+      "sourceId": "television",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "We watched a wildlife programme on television after dinner.",
+        "zh": "晚饭后我们在电视上看了一档野生动物节目。"
+      }
+    },
+    {
+      "word": "radio",
+      "sourceId": "radio",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "Dad keeps a small radio on the kitchen shelf.",
+        "zh": "爸爸在厨房架子上放着一台小收音机。"
+      }
+    },
+    {
+      "word": "mouse",
+      "sourceId": "mouse",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "A tiny mouse slipped behind the cupboard before breakfast.",
+        "zh": "早饭前，一只小老鼠溜到了橱柜后面。"
+      }
+    },
+    {
+      "word": "keyboard",
+      "sourceId": "keyboard",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/10.json",
+      "example": {
+        "en": "I brushed the crumbs off my keyboard before starting work.",
+        "zh": "开始工作前，我把键盘上的碎屑刷掉了。"
+      }
+    },
+    {
+      "word": "screen",
+      "sourceId": "screen",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/9.json",
+      "example": {
+        "en": "I wiped the fingerprints off my laptop screen.",
+        "zh": "我擦掉了笔记本电脑屏幕上的指纹。"
+      }
+    },
+    {
+      "word": "letter",
+      "sourceId": "letter",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "A letter from my sister arrived this morning.",
+        "zh": "今天早上，我收到了姐姐寄来的信。"
+      }
+    },
+    {
+      "word": "email",
+      "sourceId": "email",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "Please email me the photos from our camping trip.",
+        "zh": "请把我们露营旅行的照片通过电子邮件发给我。"
+      }
+    },
+    {
+      "word": "message",
+      "sourceId": "message",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "Please leave a message if I miss your call.",
+        "zh": "如果我没接到你的电话，请留言。"
+      }
+    },
+    {
+      "word": "friend",
+      "sourceId": "friend",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "I met an old friend at the market yesterday.",
+        "zh": "我昨天在市场遇到了一位老朋友。"
+      }
+    },
+    {
+      "word": "family",
+      "sourceId": "family",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "My family gathers around the kitchen table every Sunday.",
+        "zh": "我的家人每周日都会围坐在厨房的餐桌旁。"
+      }
+    },
+    {
+      "word": "mother",
+      "sourceId": "mother",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "My mother taught me how to ride a bicycle.",
+        "zh": "我妈妈教会了我骑自行车。"
+      }
+    },
+    {
+      "word": "father",
+      "sourceId": "father",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "Her father taught her to ride a bicycle.",
+        "zh": "她爸爸教她骑自行车。"
+      }
+    },
+    {
+      "word": "parent",
+      "sourceId": "parent",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "Each parent brought a snack for the school picnic.",
+        "zh": "每位家长都为学校野餐带了一份点心。"
+      }
+    },
+    {
+      "word": "sister",
+      "sourceId": "sister",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "My younger sister always borrows my favourite blue jumper.",
+        "zh": "我妹妹总是借穿我最喜欢的蓝色毛衣。"
+      }
+    },
+    {
+      "word": "brother",
+      "sourceId": "brother",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "My younger brother borrowed my bicycle this morning.",
+        "zh": "我弟弟今天早上借用了我的自行车。"
+      }
+    },
+    {
+      "word": "child",
+      "sourceId": "child",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "The child carefully carried a bowl of water outside.",
+        "zh": "那个孩子小心翼翼地端着一碗水走到外面。"
+      }
+    },
+    {
+      "word": "boy",
+      "sourceId": "boy",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "The boy carefully carried his puppy across the puddle.",
+        "zh": "那个男孩小心地抱着小狗跨过水坑。"
+      }
+    },
+    {
+      "word": "girl",
+      "sourceId": "girl",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "The girl carefully carried her kitten into the house.",
+        "zh": "那个女孩小心翼翼地把小猫抱进屋里。"
+      }
+    },
+    {
+      "word": "baby",
+      "sourceId": "baby",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "The baby fell asleep while her father sang softly.",
+        "zh": "爸爸轻声唱歌时，宝宝睡着了。"
+      }
+    },
+    {
+      "word": "woman",
+      "sourceId": "woman",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "The woman next door grows beautiful flowers on her balcony.",
+        "zh": "隔壁那位女士在阳台上种了漂亮的花。"
+      }
+    },
+    {
+      "word": "man",
+      "sourceId": "man",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "A man in a blue coat held the door open.",
+        "zh": "一位穿蓝色外套的男子扶着门，让别人通过。"
+      }
+    },
+    {
+      "word": "people",
+      "sourceId": "people",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "Several people were waiting outside the bakery this morning.",
+        "zh": "今天早晨，有几个人在面包店外等候。"
+      }
+    },
+    {
+      "word": "doctor",
+      "sourceId": "doctor",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "The doctor listened carefully as I described my symptoms.",
+        "zh": "我描述症状时，医生认真地听着。"
+      }
+    },
+    {
+      "word": "nurse",
+      "sourceId": "nurse",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/9.json",
+      "example": {
+        "en": "The nurse gently wrapped a bandage around my wrist.",
+        "zh": "护士轻轻地用绷带包住我的手腕。"
+      }
+    },
+    {
+      "word": "hospital",
+      "sourceId": "hospital",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "She works as a nurse at the local hospital.",
+        "zh": "她在当地医院当护士。"
+      }
+    },
+    {
+      "word": "medicine",
+      "sourceId": "medicine",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/17.json",
+      "example": {
+        "en": "The pharmacist explained how often to take the medicine.",
+        "zh": "药剂师解释了这种药应该多久服用一次。"
+      }
+    },
+    {
+      "word": "health",
+      "sourceId": "health",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/13.json",
+      "example": {
+        "en": "Walking to work has really improved my health.",
+        "zh": "步行上班确实改善了我的健康状况。"
+      }
+    },
+    {
+      "word": "healthy",
+      "sourceId": "healthy",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "Our cat stays healthy with regular exercise and checkups.",
+        "zh": "我们家的猫通过经常运动和定期检查保持健康。"
+      }
+    },
+    {
+      "word": "ill",
+      "sourceId": "ill",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/17.json",
+      "example": {
+        "en": "I felt ill after the long bus journey.",
+        "zh": "长途乘车后，我感到身体不适。"
+      }
+    },
+    {
+      "word": "sick",
+      "sourceId": "sick",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/12.json",
+      "example": {
+        "en": "He stayed in bed because he felt sick this morning.",
+        "zh": "他今天早上觉得不舒服，所以一直躺在床上。"
+      }
+    },
+    {
+      "word": "headache",
+      "sourceId": "headache",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/13.json",
+      "example": {
+        "en": "I have a headache, so I need some quiet.",
+        "zh": "我头痛，需要安静一会儿。"
+      }
+    },
+    {
+      "word": "tooth",
+      "sourceId": "tooth",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "The dentist checked each tooth with a small mirror.",
+        "zh": "牙医用一面小镜子检查了每颗牙齿。"
+      }
+    },
+    {
+      "word": "brush",
+      "sourceId": "brush",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/8.json",
+      "example": {
+        "en": "Use a soft brush to clean your muddy shoes.",
+        "zh": "用软毛刷清理你沾满泥的鞋子。"
+      }
+    },
+    {
+      "word": "wash",
+      "sourceId": "wash",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "Please wash your hands before you help prepare dinner.",
+        "zh": "帮忙准备晚餐前，请先洗手。"
+      }
+    },
+    {
+      "word": "clean",
+      "sourceId": "clean",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "There are clean towels on the shelf beside you.",
+        "zh": "你旁边的架子上有干净的毛巾。"
+      }
+    },
+    {
+      "word": "dirty",
+      "sourceId": "dirty",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "Please leave your dirty boots outside the kitchen door.",
+        "zh": "请把你的脏靴子放在厨房门外。"
+      }
+    },
+    {
+      "word": "dangerous",
+      "sourceId": "dangerous",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "That broken step is dangerous, so please avoid it.",
+        "zh": "那级破损的台阶很危险，请避开它。"
+      }
+    },
+    {
+      "word": "safe",
+      "sourceId": "safe",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/15.json",
+      "example": {
+        "en": "Your bike is safe inside our locked garage.",
+        "zh": "你的自行车放在我们锁好的车库里很安全。"
+      }
+    },
+    {
+      "word": "fire",
+      "sourceId": "fire",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "We warmed our hands by the fire after dinner.",
+        "zh": "晚饭后，我们在炉火旁暖手。"
+      }
+    },
+    {
+      "word": "police",
+      "sourceId": "police",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "The police helped us find our missing bicycle.",
+        "zh": "警方帮我们找到了丢失的自行车。"
+      }
+    },
+    {
+      "word": "help",
+      "sourceId": "help",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "Could you help me carry these bags upstairs?",
+        "zh": "你能帮我把这些袋子提上楼吗？"
+      }
+    },
+    {
+      "word": "job",
+      "sourceId": "job",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "My sister found a job at the local library.",
+        "zh": "我姐姐在当地图书馆找到了一份工作。"
+      }
+    },
+    {
+      "word": "office",
+      "sourceId": "office",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "I left my umbrella under the desk at the office.",
+        "zh": "我把伞落在办公室的桌子下面了。"
+      }
+    },
+    {
+      "word": "factory",
+      "sourceId": "factory",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/12.json",
+      "example": {
+        "en": "My aunt works at a factory that makes bicycles.",
+        "zh": "我姑姑在一家生产自行车的工厂工作。"
+      }
+    },
+    {
+      "word": "farm",
+      "sourceId": "farm",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "We bought fresh eggs from a nearby farm.",
+        "zh": "我们从附近的农场买了新鲜鸡蛋。"
+      }
+    },
+    {
+      "word": "farmer",
+      "sourceId": "farmer",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "The farmer feeds her chickens before the sun rises.",
+        "zh": "这位农民在日出前给她的鸡喂食。"
+      }
+    },
+    {
+      "word": "animal",
+      "sourceId": "animal",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "My sister loves watching animals at the local farm.",
+        "zh": "我妹妹喜欢在当地农场看动物。"
+      }
+    },
+    {
+      "word": "cat",
+      "sourceId": "cat",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "Our cat sleeps in a sunny spot by the window.",
+        "zh": "我们家的猫睡在窗边阳光照得到的地方。"
+      }
+    },
+    {
+      "word": "dog",
+      "sourceId": "dog",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "Our dog waits by the door every afternoon.",
+        "zh": "我们的狗每天下午都守在门边。"
+      }
+    },
+    {
+      "word": "bird",
+      "sourceId": "bird",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/6.json",
+      "example": {
+        "en": "A small bird built a nest above our window.",
+        "zh": "一只小鸟在我们窗户上方筑了巢。"
+      }
+    },
+    {
+      "word": "horse",
+      "sourceId": "horse",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "The brown horse gently took an apple from my hand.",
+        "zh": "那匹棕色的马轻轻地吃走了我手里的苹果。"
+      }
+    },
+    {
+      "word": "cow",
+      "sourceId": "cow",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/4.json",
+      "example": {
+        "en": "A brown cow stood quietly beside the farm gate.",
+        "zh": "一头棕色母牛静静地站在农场门旁。"
+      }
+    },
+    {
+      "word": "sheep",
+      "sourceId": "sheep",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "Several sheep were resting under a tree near the farm.",
+        "zh": "几只绵羊正在农场附近的一棵树下休息。"
+      }
+    },
+    {
+      "word": "pig",
+      "sourceId": "pig",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/1.json",
+      "example": {
+        "en": "A pink pig was sleeping beside the wooden fence.",
+        "zh": "一头粉色的猪正睡在木栅栏旁。"
+      }
+    },
+    {
+      "word": "rabbit",
+      "sourceId": "rabbit",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/3.json",
+      "example": {
+        "en": "A white rabbit hopped across the grass towards us.",
+        "zh": "一只白兔蹦蹦跳跳地穿过草地，朝我们跑来。"
+      }
+    },
+    {
+      "word": "duck",
+      "sourceId": "duck",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/11.json",
+      "example": {
+        "en": "A duck paddled past us with several tiny ducklings.",
+        "zh": "一只鸭子带着几只小鸭从我们身旁游过。"
+      }
+    },
+    {
+      "word": "elephant",
+      "sourceId": "elephant",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "The elephant sprayed water over its back with its trunk.",
+        "zh": "大象用鼻子把水喷到自己的背上。"
+      }
+    },
+    {
+      "word": "lion",
+      "sourceId": "lion",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/7.json",
+      "example": {
+        "en": "The lion rested beneath a tree in the shade.",
+        "zh": "那头狮子在树荫下休息。"
+      }
+    },
+    {
+      "word": "tiger",
+      "sourceId": "tiger",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/2.json",
+      "example": {
+        "en": "The tiger rested in the shade beside a pool.",
+        "zh": "那只老虎在水池旁的阴凉处休息。"
+      }
+    },
+    {
+      "word": "panda",
+      "sourceId": "panda",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/17.json",
+      "example": {
+        "en": "The panda sat quietly, chewing a fresh bamboo shoot.",
+        "zh": "那只大熊猫静静地坐着，嚼着一根新鲜竹笋。"
+      }
+    },
+    {
+      "word": "monkey",
+      "sourceId": "monkey",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/5.json",
+      "example": {
+        "en": "A little monkey swung between branches above our heads.",
+        "zh": "一只小猴子在我们头顶的树枝间荡来荡去。"
+      }
+    },
+    {
+      "word": "zebra",
+      "sourceId": "zebra",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/10.json",
+      "example": {
+        "en": "A zebra stood quietly beside the watering hole.",
+        "zh": "一匹斑马静静地站在水塘旁。"
+      }
+    },
+    {
+      "word": "device",
+      "sourceId": "device",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/32.json",
+      "example": {
+        "en": "This tiny device tracks my steps throughout the day.",
+        "zh": "这个小装置会记录我一整天的步数。"
+      }
+    },
+    {
+      "word": "less",
+      "sourceId": "less",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/8.json",
+      "example": {
+        "en": "Please put less sugar in my tea this time.",
+        "zh": "这次请在我的茶里少放点糖。"
+      }
+    },
+    {
+      "word": "remember",
+      "sourceId": "remember",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/0.json",
+      "example": {
+        "en": "I still remember the smell of my grandmother's kitchen.",
+        "zh": "我至今还记得祖母厨房里的气味。"
+      }
+    },
+    {
+      "word": "borrow",
+      "sourceId": "borrow",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/12.json",
+      "example": {
+        "en": "Could I borrow your umbrella until tomorrow morning?",
+        "zh": "我能借用一下你的伞，明天早上还吗？"
+      }
+    },
+    {
+      "word": "allow",
+      "sourceId": "allow",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/12.json",
+      "example": {
+        "en": "The library allows visitors to borrow five books at once.",
+        "zh": "图书馆允许访客一次借五本书。"
+      }
+    },
+    {
+      "word": "design",
+      "sourceId": "design",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/8.json",
+      "example": {
+        "en": "My cousin designed a wooden desk for her bedroom.",
+        "zh": "我表姐为自己的卧室设计了一张木书桌。"
+      }
+    },
+    {
+      "word": "environment",
+      "sourceId": "environment",
+      "sourceEntryUrl": "https://github.com/designfuchen/word-atlas/blob/99c007673d38f02c418d8e4cd2e9ec90b5d40be5/public/atlas/entries/15.json",
+      "example": {
+        "en": "We cycle to school to help protect the environment.",
+        "zh": "我们骑车上学，为保护环境出一份力。"
+      }
+    }
+  ]
+}

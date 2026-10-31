@@ -34,7 +34,7 @@ jobs:
       - name: Lint dictionary presentation
         run: yarn eslint src/components/DictionaryContent src/utils/dictionaryContent.ts src/typings/index.ts src/pages/Typing/components/WordPanel/components/Translation/index.tsx src/pages/Typing/components/WordList/WordCard.tsx --ext .ts,.tsx
       - name: Lint PC illustration presentation
-        run: yarn eslint src/components/DesktopStudyIllustration src/resources/studyIllustrations.ts --ext .ts,.tsx
+        run: yarn eslint src/components/DesktopStudyIllustration src/components/SyllabusExamples src/resources/studyIllustrations.ts src/resources/studyExamples.ts --ext .ts,.tsx
       - name: Install Chromium and Chinese fonts
         run: |
           npx playwright install --with-deps chromium

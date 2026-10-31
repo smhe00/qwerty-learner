@@ -79,7 +79,7 @@ import { CTRL, getUtcStringForMixpanel, shouldIgnoreTypingKeyEvent } from '@/uti
 import { useWordRecordCommit } from '@/hooks/useWordRecordCommit'
 import type { WordFinishResult } from '@/learn/word-completion'
 import type { DurableWordRecordReceipt, WordRecordCommitResult } from '@/learn/word-record-commit'
-import { getFirstValidDictionaryExample } from '@/utils/dictionaryExample'
+import { getStudyPresentation } from '@/resources/studyExamples'
 import type { IWordRecord, PronunciationCue } from '@/utils/db/record'
 import { useAtomValue } from 'jotai'
 import {
@@ -263,7 +263,7 @@ export default function WordComponent({
       answerVisibilityAtStart: summarizeAnswerVisibility(appliedLetterVisibility),
       answerVisibleRatioAtStart: calculateAnswerVisibleRatio(appliedLetterVisibility),
       exampleVisibleAtStart:
-        getFirstValidDictionaryExample(word) !== undefined,
+        getStudyPresentation(currentDictInfo.id, word).example !== undefined,
       meaningVisibleAtStart: meaningVisible,
       phoneticVisibleAtStart: phoneticVisible,
       pronunciationEnabledAtStart:
@@ -1306,7 +1306,8 @@ export default function WordComponent({
           </div>
         </div>
         </DesktopStudyIllustration>
-        <ExampleCue word={word} revealed={wordState.isFinished} />
+        <ExampleCue word={word} dictId={currentDictInfo.id} revealed={wordState.isFinished}
+          answerVisible={wordState.displayWord.length > 0 && wordState.displayWord.split('').every((_, index) => getLetterVisible(index))} />
         {saveError && (
           <div role="alert" className="mt-3 max-w-md text-center text-sm">
             <p>{saveError}</p>

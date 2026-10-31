@@ -80,7 +80,7 @@ const Footer: React.FC = () => {
           </div>
           <section className="border-t border-slate-200 pt-3 dark:border-slate-700" data-word-atlas-attribution>
             <h4 className="font-semibold text-slate-800 dark:text-slate-100">学习插画</h4>
-            <p>插画来自 Word Atlas，署名 Word Atlas contributors。图片原样使用，采用 CC BY 4.0 许可。</p>
+            <p>插画及补充日常例句来自 Word Atlas，署名 Word Atlas contributors，采用 CC BY 4.0 许可。图片与例句原文保留，另加学习遮罩；考纲原文独立保留。</p>
             <div className="flex flex-wrap gap-x-4 text-indigo-600 dark:text-indigo-300">
               <a href="https://github.com/designfuchen/word-atlas" target="_blank" rel="noreferrer"
                 className="inline-flex min-h-[44px] items-center hover:underline">Word Atlas 项目</a>

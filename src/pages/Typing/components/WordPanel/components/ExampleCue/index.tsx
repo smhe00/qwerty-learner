@@ -1,21 +1,22 @@
-import {
-  getFirstValidDictionaryExample,
-  maskDictionaryExample,
-} from '@/utils/dictionaryExample'
+import SyllabusExamples from '@/components/SyllabusExamples'
+import { getStudyPresentation } from '@/resources/studyExamples'
+import { maskDictionaryExample } from '@/utils/dictionaryExample'
 import type { Word } from '@/typings'
 import { useMemo } from 'react'
 
 export default function ExampleCue({
   word,
   revealed,
+  dictId,
+  answerVisible,
 }: {
   word: Word
   revealed: boolean
+  dictId: string
+  answerVisible: boolean
 }) {
-  const example = useMemo(
-    () => getFirstValidDictionaryExample(word),
-    [word],
-  )
+  const presentation = useMemo(() => getStudyPresentation(dictId, word), [dictId, word])
+  const example = presentation.example
   const parts = useMemo(
     () => (example ? maskDictionaryExample(example) : undefined),
     [example],
@@ -27,8 +28,10 @@ export default function ExampleCue({
     <div
       data-typing-example="visible"
       data-typing-example-revealed={revealed ? 'true' : 'false'}
+      data-study-example-source={presentation.source}
       className="focus-example-cue mt-4 max-w-3xl whitespace-pre-wrap px-4 text-center font-sans text-base leading-7 sm:px-6"
     >
+      {presentation.source === 'daily' && <p className="mb-1 text-xs text-slate-600 dark:text-slate-300">日常例句</p>}
       <div
         data-typing-example-en="visible"
         className="focus-example-en"
@@ -52,6 +55,7 @@ export default function ExampleCue({
       >
         {example.cn}
       </div>
+      {answerVisible && <SyllabusExamples examples={presentation.syllabusExamples} />}
     </div>
   )
 }
