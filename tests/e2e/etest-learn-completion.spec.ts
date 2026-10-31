@@ -32,7 +32,9 @@ async function request(path: string, method: string, body?: object, token?: stri
 }
 async function account(page: Page) {
   await page.goto(base + '/?s1-account=manage', { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('[data-account]')).toBeVisible({ timeout: 60_000 })
+  // The account progress shell mounts before the exclusive workspace is ready.
+  // Fixtures may read/write only after the real guarded account surface mounts.
+  await expect(page.locator('[data-account]:not([data-account-progress])')).toBeVisible({ timeout: 60_000 })
 }
 async function login(page: Page, username: string, password: string) {
   await account(page)
@@ -47,21 +49,28 @@ async function login(page: Page, username: string, password: string) {
     },
     { timeout: 60_000 },
   )
-  const confirmation = page.waitForEvent('dialog', { timeout: 60_000 }).then(async (dialog) => {
-    expect(dialog.type()).toBe('confirm')
-    expect(dialog.message()).toBe('登录“' + username + '”后，将使用该账号的学习记录。本机未登录时的记录会保留，不会自动合并。继续登录？')
-    await dialog.accept()
-  })
-  await page.getByRole('button', { name: '登录', exact: true }).click()
-  await confirmation
-  expect((await response).status()).toBe(200)
-  await expect(page).toHaveURL(/^https:\/\/t\.smhe\.cn\/(?:learn)?$/, { timeout: 120_000 })
-  // Pinned real-cloud diagnosis proved a successful full-V4 restore can
-  // still be publishing/verifying immutable evidence at 60s, then mount
-  // naturally around 80s. Preserve all exact readback/3-device assertions;
-  // only this live login phase gets a bounded network startup budget.
-  await acknowledgeInformationDialog(page, 180_000)
-  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
+  const dialogs: string[] = []
+  const onDialog = async (dialog: import('@playwright/test').Dialog) => {
+    dialogs.push(dialog.type())
+    await dialog.dismiss()
+  }
+  page.on('dialog', onDialog)
+  try {
+    // Login is now one-submit; a native confirmation would regress that flow.
+    await page.getByRole('button', { name: '登录', exact: true }).click()
+    expect((await response).status()).toBe(200)
+    await expect(page).toHaveURL(/^https:\/\/t\.smhe\.cn\/(?:learn)?$/, { timeout: 120_000 })
+    // Pinned real-cloud diagnosis proved a successful full-V4 restore can
+    // still be publishing/verifying immutable evidence at 60s, then mount
+    // naturally around 80s. Preserve all exact readback/3-device assertions;
+    // only this live login phase gets a bounded network startup budget.
+    await acknowledgeInformationDialog(page, 180_000)
+    await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
+    expect(dialogs).toEqual([])
+    await expect.poll(() => page.evaluate(() =>
+      JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null')?.user?.username,
+    )).toBe(username)
+  } finally { page.off('dialog', onDialog) }
 }
 async function meta(page: Page) {
   return page.evaluate(async () => {
