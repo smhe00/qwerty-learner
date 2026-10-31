@@ -10,10 +10,10 @@ const dictionary: Word[] = JSON.parse(readFileSync('public/dicts/ShanghaiZhongka
 const words = ['ability', 'able', 'remember'].map(name => dictionary.find(word => word.name === name)!)
 const figure = '[data-desktop-study-illustration]'
 
-async function open(page: Page, dark: boolean, mode: 'keyboard' | 'touch', phase: 'exposure' | 'independent', mobile = false) {
+async function open(page: Page, dark: boolean, mode: 'keyboard' | 'touch', phase: 'exposure' | 'independent', mobile = false, studyWords = words) {
   await prepareVisibleUI(page, dark)
   await page.addInitScript(mode => localStorage.setItem('learnInputMode', mode), mode)
-  await seedAcquisitionSession(page, words, 983720, phase, 4, 'unknown', {}, true, 'shanghai-zhongkao-2027')
+  await seedAcquisitionSession(page, studyWords, 983720, phase, 4, 'unknown', {}, true, 'shanghai-zhongkao-2027')
   await page.goto(uiPath(mobile ? '/mobile/study' : '/learn'))
   if (mode === 'keyboard' && !mobile) {
     const start = page.getByRole('button', { name: /^(开始练习|继续练习)$/ })
@@ -25,6 +25,30 @@ async function open(page: Page, dark: boolean, mode: 'keyboard' | 'touch', phase
     const resume = card.locator('[data-mobile-paused]').getByRole('button', { name: /继续学习/ })
     if (await resume.isVisible()) await resume.click()
   }
+}
+
+for (const name of ['device', 'zebra', 'less', 'bear', 'amusement']) {
+  test('expanded catalog preserves the original PC meaning and asset boundary for ' + name, async ({ page }, info) => {
+    test.skip(!info.project.name.startsWith('desktop'), 'PC presentation')
+    const word = dictionary.find(word => word.name === name)!
+    const expected = !['bear', 'amusement'].includes(name)
+    const requests: string[] = []
+    page.on('request', request => { if (/images\/word-atlas\/.*\.webp/.test(request.url())) requests.push(request.url()) })
+    await open(page, info.project.name.endsWith('dark'), 'keyboard', 'exposure', false, [word, words[0]])
+    await expect(page.locator('[data-typing-word]')).toHaveText(name)
+    await expect(page.locator('[data-dictionary-senses]')).toContainText(word.content!.senses[0]?.text || word.trans[0])
+    if (expected) {
+      await expect(page.locator(figure)).toHaveAttribute('data-illustration-word', name)
+      await expect.poll(() => page.locator(figure + ' img').evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(512)
+      await expect(page.locator(figure + ' figcaption')).toHaveCount(0)
+      expect(new Set(requests).size).toBe(1)
+    } else {
+      await expect(page.locator(figure)).toHaveCount(0)
+      expect(requests).toEqual([])
+    }
+    await auditVisibleUI(page, info, 'pc-expanded-catalog-' + name)
+    await page.screenshot({ path: info.outputPath('pc-expanded-catalog-' + name + '.png') })
+  })
 }
 
 for (const mode of ['keyboard', 'touch'] as const) {

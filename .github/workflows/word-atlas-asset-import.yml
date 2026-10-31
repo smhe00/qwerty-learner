@@ -1,0 +1,58 @@
+name: Import pinned Word Atlas image assets
+
+on:
+  push:
+    branches: ['codex/word-atlas-import-*']
+    paths:
+      - '.github/workflows/word-atlas-asset-import.yml'
+      - 'scripts/import-study-illustrations.mjs'
+      - 'scripts/data/study-illustration-*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: word-atlas-import-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: startsWith(github.ref, 'refs/heads/codex/word-atlas-import-')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Fetch unchanged original images at the pinned source revision
+        shell: bash
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/designfuchen/word-atlas.git "$RUNNER_TEMP/word-atlas"
+          node -e "for(const e of require('./src/resources/study-illustrations.json')) console.log('/public/atlas/img/'+e.sourceId+'.webp')" > "$RUNNER_TEMP/atlas-paths"
+          git -C "$RUNNER_TEMP/word-atlas" sparse-checkout set --no-cone --stdin < "$RUNNER_TEMP/atlas-paths"
+          git -C "$RUNNER_TEMP/word-atlas" checkout --detach 99c007673d38f02c418d8e4cd2e9ec90b5d40be5
+          test "$(git -C "$RUNNER_TEMP/word-atlas" rev-parse HEAD)" = 99c007673d38f02c418d8e4cd2e9ec90b5d40be5
+          mkdir -p "$RUNNER_TEMP/atlas-input"
+          ln -s "$RUNNER_TEMP/word-atlas/public/atlas/img" "$RUNNER_TEMP/atlas-input/images"
+      - name: Import and validate complete image hashes and syllabus coverage
+        shell: bash
+        run: |
+          node scripts/import-study-illustrations.mjs "$RUNNER_TEMP/atlas-input" scripts/data/study-illustration-candidates.json
+          git diff --exit-code -- src/resources/study-illustrations.json docs/data/shanghai-2027-image-audit.json public/dicts/ShanghaiZhongkao2027.json
+          node --test tests/dictionary/study-illustrations.test.mjs
+      - name: Commit assets to the isolated import branch only
+        shell: bash
+        run: |
+          git add public/images/word-atlas
+          if ! git diff --cached --quiet; then
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'assets: import pinned Shanghai 2027 study illustrations'
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+          echo "Imported candidate: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo 'No development, staging or production branch is advanced by this workflow.' >> "$GITHUB_STEP_SUMMARY"
