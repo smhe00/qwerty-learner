@@ -243,6 +243,7 @@ export default function MobileWordPractice({
     maskedExample && (
       <MobilePracticeExample
         example={maskedExample}
+        label={presentation.source === 'daily' ? '日常例句' : undefined}
         showAnswer={showAnswer}
         fontSize={exampleFontSize}
         expanded={!desktop && exampleExpanded}
@@ -778,8 +779,6 @@ export default function MobileWordPractice({
         </div>
 
         <div className="mobile-practice-example-slot" data-mobile-example-slot data-study-example-source={presentation.source}>
-          {presentation.source === 'daily' && (feedback || ['exposure', 'spelling', 'recall', 'context'].includes(task)) &&
-            <p className="mb-1 text-xs text-slate-600 dark:text-slate-300">日常例句</p>}
           {feedback || task === 'exposure' ? (
             renderExample(true)
           ) : task === 'spelling' ? (

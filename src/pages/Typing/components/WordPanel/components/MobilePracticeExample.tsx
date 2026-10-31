@@ -9,6 +9,7 @@ export default function MobilePracticeExample({
   expanded,
   expandable,
   onToggle,
+  label,
 }: {
   example: ReturnType<typeof maskDictionaryExample>
   showAnswer: boolean
@@ -16,6 +17,7 @@ export default function MobilePracticeExample({
   expanded: boolean
   expandable: boolean
   onToggle: () => void
+  label?: string
 }) {
   const ref = useRef<HTMLParagraphElement>(null)
   const id = useId()
@@ -45,6 +47,7 @@ export default function MobilePracticeExample({
         data-mobile-example
         data-expanded={expanded || undefined}
       >
+        {label && <span className="text-xs text-slate-600 dark:text-slate-300" data-daily-example-label>{label} · </span>}
         {example.before}
         <mark className={showAnswer ? 'mobile-practice-keyword' : 'mobile-practice-blank'} data-mobile-keyword>
           {showAnswer ? example.surface : example.masked}
