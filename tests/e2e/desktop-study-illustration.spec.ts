@@ -27,6 +27,24 @@ async function open(page: Page, dark: boolean, mode: 'keyboard' | 'touch', phase
   }
 }
 
+for (const name of ['bakery', 'cook', 'television']) {
+  for (const phase of ['exposure', 'independent'] as const) test('long daily ' + name + ' leaves the PC meaning and main action readable in ' + phase, async ({ page }, info) => {
+    test.skip(!info.project.name.startsWith('desktop'), 'PC daily text wrapping')
+    const word = dictionary.find(word => word.name === name)!
+    await open(page, info.project.name.endsWith('dark'), 'touch', phase, false, [word, words[0]])
+    const card = page.locator('[data-desktop-tap-practice]')
+    if (phase === 'independent') await card.getByRole('button', { name: /改用独立拼写/ }).click()
+    await expect(card.locator('[data-dictionary-senses]')).toBeInViewport({ ratio: 1 })
+    if (phase === 'exposure') await expect(card.locator('[data-dictionary-details] > summary')).toBeInViewport({ ratio: 1 })
+    else await expect(card.locator('[data-syllabus-examples]')).toHaveCount(0)
+    await expect(card.locator('[data-mobile-example]')).toBeInViewport({ ratio: 1 })
+    await expect(card.locator('.mobile-practice-primary')).toBeInViewport({ ratio: 1 })
+    await expect(card.locator(figure)).toBeVisible()
+    await auditVisibleUI(page, info, 'daily-long-' + phase + '-' + name)
+    await page.screenshot({ path: info.outputPath('daily-long-' + phase + '-' + name + '.png') })
+  })
+}
+
 for (const name of ['bread', 'zebra', 'device', 'bear', 'amusement']) {
   test('expanded catalog preserves the original PC meaning and asset boundary for ' + name, async ({ page }, info) => {
     test.skip(!info.project.name.startsWith('desktop'), 'PC presentation')

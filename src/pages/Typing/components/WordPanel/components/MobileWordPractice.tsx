@@ -707,7 +707,7 @@ export default function MobileWordPractice({
               {desktop && <h2 className="mobile-practice-word" style={{ fontSize: wordFontSize }} aria-label="单词已隐藏">
                 <span aria-hidden="true">••••••</span>
               </h2>}
-              <p className="mobile-practice-cue">根据词义，完整拼写英文单词</p>
+              {!desktop && <p className="mobile-practice-cue">根据词义，完整拼写英文单词</p>}
             </>
           ) : task === 'audio' ? (
             <div className="mobile-practice-audio-hero" aria-hidden="true">

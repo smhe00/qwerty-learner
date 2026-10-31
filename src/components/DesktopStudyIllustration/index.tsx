@@ -32,7 +32,7 @@ export default function DesktopStudyIllustration({ word, dictId, visible, answer
     const measure = () => {
       const token = content.querySelector<HTMLElement>('[data-typing-word], .mobile-practice-word')
       const card = content.closest<HTMLElement>('[data-desktop-tap-practice]')
-      const size = card ? card.dataset.mobileTask === 'spelling' ? 96 : 128 : 176
+      const size = card ? card.dataset.mobileTask === 'spelling' ? 80 : 104 : 176
       const available = card ? card.clientWidth - 64 : window.innerWidth - 128
       const box = token?.getBoundingClientRect()
       if (!box?.width || !box.height || window.innerWidth < 1200 || window.innerHeight < 650 ||
