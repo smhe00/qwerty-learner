@@ -143,7 +143,11 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
     })
     const entry = base + '?s1-account=manage'
     await page.goto(entry, { waitUntil: 'domcontentloaded' })
-    const accountDialog = page.locator('[data-account]')
+    // The opening/progress shell also has data-account, before guarded boot
+    // acquires the writer lease. Only a real form proves account entry ready.
+    const accountDialog = page.locator('[data-account]').filter({
+      has: page.getByLabel('用户名', { exact: true }),
+    })
     try {
       await expect(accountDialog).toBeVisible({ timeout: 12000 })
     } catch {
@@ -238,6 +242,7 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
     await duplicate.goto(base + '?s1-account=manage', { waitUntil: 'domcontentloaded' })
     await expect(duplicate.getByText('另一个标签页正在使用学习数据'))
       .toBeVisible({ timeout: 30_000 })
+    await expect(a1.getByLabel('用户名', { exact: true })).toBeVisible()
     await duplicate.close()
     await signIn(a1, userA, true)
     await a1.reload({ waitUntil: 'domcontentloaded' })
