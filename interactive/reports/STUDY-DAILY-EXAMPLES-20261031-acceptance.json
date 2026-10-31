@@ -1,0 +1,94 @@
+{
+  "status": "REVIEW",
+  "sourceCommit": "02c9e2f4e3b21d0471a226643f1310a06fbca96b",
+  "preview": "https://smhe00.github.io/qwerty-learner/learn",
+  "sourceLicense": {
+    "repository": "https://github.com/designfuchen/word-atlas",
+    "commit": "99c007673d38f02c418d8e4cd2e9ec90b5d40be5",
+    "license": "CC BY 4.0",
+    "attribution": "Word Atlas contributors"
+  },
+  "content": {
+    "reviewedHeadwords": 219,
+    "enabledDailyExamples": 216,
+    "pairedImages": 92,
+    "deferredQuality": 3,
+    "unreviewedDictionaryEntries": 2653,
+    "storedOriginalImages": 2207
+  },
+  "authoritativeDictionarySha256": "ffcbfcf7950f824c4d0666facd028171520ab9baf0b59e7fc91f5f9e7f3ab9b5",
+  "sourceValidation": {
+    "dictionaryContracts": 21,
+    "lintErrors": 0,
+    "existingLintWarnings": 3,
+    "repositoryTypecheck": "143 existing/unresolved repository diagnostics; modified presentation files had no diagnostics, not a full typecheck PASS"
+  },
+  "uiQualification": {
+    "run": 41199832235,
+    "sha": "02c9e2f4e3b21d0471a226643f1310a06fbca96b",
+    "edgeone": {
+      "job": 124533314880,
+      "conclusion": "success",
+      "dictionaryJourneys": 22,
+      "pictureAndExampleJourneys": 50,
+      "fullUiJourneys": 200,
+      "primaryActionJourneys": 17
+    },
+    "pages": {
+      "job": 124533315124,
+      "conclusion": "success",
+      "dictionaryJourneys": 22,
+      "pictureAndExampleJourneys": 50,
+      "fullUiJourneys": 86,
+      "primaryActionJourneys": 17,
+      "offlineAccountJourneys": 20
+    },
+    "published": {
+      "job": 124535005898,
+      "conclusion": "success",
+      "chromiumRegression": 9,
+      "artifactCommit": "3930bceb7071e59487a73d56e5e99410da7cfb20"
+    }
+  },
+  "unchangedApplicationSourceValidation": {
+    "sourceCommit": "f6403dfafed6f6ab23a0b59c06bad6edd7a7d75c",
+    "reviewGate": {
+      "run": 41199236281,
+      "conclusion": "success",
+      "learnBrowserContracts": 126
+    },
+    "mobileP0": {
+      "run": 41199236266,
+      "conclusion": "success"
+    },
+    "learnCompletion": {
+      "run": 41199236180,
+      "conclusion": "success"
+    },
+    "learnRealJourney": {
+      "run": 41199236176,
+      "conclusion": "success"
+    },
+    "mobileMenuCompletion": {
+      "run": 41199236187,
+      "conclusion": "success"
+    },
+    "note": "Later commits changed only CSS/test/docs, not learning logic."
+  },
+  "manualPublishedBrowser": {
+    "versionSeen": "02c9e2f",
+    "ability": "Reviewed repair sentence, no incompatible riding picture",
+    "able": "Swimming picture beside word, daily swimming sentence and expandable unchanged original reference-book sentence",
+    "screenshot": "interactive/evidence/daily-example-pages-02c9e2f-1793449247544.jpg"
+  },
+  "unchangedReleaseBranches": {
+    "edgeone-test": "714455a41bc49ed0e853a7225792e608f36ba999",
+    "master": "7eb3631f1614c8c78352a13bcbcae84ba165a290"
+  },
+  "limits": [
+    "Codex screening, not independent human certification",
+    "Unreviewed content is not enabled",
+    "No actual iOS/HarmonyOS device qualification",
+    "No new real Cloud/Blob qualification or staging/production promotion in this continuation"
+  ]
+}

@@ -1,6 +1,6 @@
 # Supplementary daily examples and reviewed picture pairs
 
-Status: IN_PROGRESS; source implementation ready, published UI qualification pending. Base product/main 3e5d50338565b8e01c8644bd4118afb6856e9ca4. No master release.
+Status: REVIEW. Implemented and published to Pages; feature SHA 02c9e2f4e3b21d0471a226643f1310a06fbca96b qualified. Base product/main 3e5d50338565b8e01c8644bd4118afb6856e9ca4. No staging or master promotion in this continuation.
 
 Owner approved adding quality-comparable Word Atlas daily examples while retaining authoritative Shanghai 2027 content. Implemented a separate presentation catalog, not an append/reorder of authoritative example arrays. The complete dictionary SHA-256 remains ffcbfcf7950f824c4d0666facd028171520ab9baf0b59e7fc91f5f9e7f3ab9b5.
 
@@ -38,3 +38,19 @@ The 45b7b417 requalification still reproduced the same four clipping ratios. Fur
 Broadened the concrete wrapping boundary to bakery/cook/television (long daily sentences, multiple syllabus senses or no prior example). Compact PC tap pictures to 104px in exposure and 80px in spelling, retaining keyboard pictures at 176px and the existing word-center alignment. PC spelling already has an 独立拼写 header and labelled input, so omit its duplicate explanatory line to preserve space for a two-line sentence and meaning. Phone instruction/spacing remains unchanged. Added exposure+dictation painted-viewport checks for all three words in both themes; no visibility assertion relaxed.
 
 The expanded e1edbb74 matrix correctly rejected long wrapped sentences with multi-sense meanings: bakery disclosure 96.3% visible, cook disclosure 30.6%, and cook spelling meaning 43.2%. The inline-label fix passed the prior baseline but did not solve this broader boundary. Use actual PC horizontal space: widen the desktop tap card from 600px to 720px (frame 880px), allow daily examples its full width instead of the inherited phone 470px cap, and use 8px/2px desktop example margins. This frees meaning height while keeping a readable sentence, all senses, the word/image row and the separate primary-action rail. Phone CSS is unaffected. Requalification required; no passing claim for rejected candidates.
+
+## Final qualified result
+
+02c9e2f4e3b21d0471a226643f1310a06fbca96b additionally pins the desktop overrides with data-desktop-tap-study, so lazy CSS order cannot restore the old phone-width cap. The final source, examples and stored images are on product/main; no authoritative dictionary byte changed.
+
+Exact-SHA Pages deployment/UI run **41199832235 PASS**:
+
+- EdgeOne production-build companion job 124533314880: 21 dictionary contracts, 22 dictionary UI journeys, 50 illustration/example journeys, 200 full visible-UI journeys and 17 primary-action journeys PASS.
+- Pages production-build job 124533315124: 21 dictionary contracts, 22 dictionary UI journeys, 50 illustration/example journeys, 86 full visible-UI journeys, 17 primary-action journeys and 20 offline account UI journeys PASS. Intended scope skips are retained, not described as tests passed.
+- Both production builds and global-CSS ownership checks PASS. Published deployment job 124535005898 verified the exact source SHA, actual Pages artifact 3930bceb7071e59487a73d56e5e99410da7cfb20 and nine live Chromium regression journeys PASS.
+- Learning-logic source f6403dfafed6f6ab23a0b59c06bad6edd7a7d75c additionally passed Review Gate 41199236281 (126 Learn browser contracts), Mobile P0 41199236266, Learn Completion 41199236180, Learn Real Journey 41199236176 and Mobile Menu Completion 41199236187. Subsequent application changes were CSS only; these are not mislabelled as exact-02c9 source runs.
+- Direct published-browser inspection saw footer 02c9e2f, ability's new repair sentence with no riding image, then able's swimming picture beside the word and its swimming daily sentence. Expanded 考纲例句 and verified the original reference-book sentence and translation remain accessible. Saved screenshot interactive/evidence/daily-example-pages-02c9e2f-1793449247544.jpg. Only anonymous Pages test activity; no real account/authentication/cloud writes.
+
+Machine-readable evidence: STUDY-DAILY-EXAMPLES-20261031-acceptance.json. Routine UI delivery uses Pages; edgeone-test remains 714455a41bc49ed0e853a7225792e608f36ba999 and master remains 7eb3631f1614c8c78352a13bcbcae84ba165a290. No new Cloud/Blob or actual iOS/HarmonyOS device qualification is claimed. Whole-library semantic review remains incomplete: this batch approves 216 examples and 92 compatible scene pairs only; the other assets remain stored and unreviewed examples are not automatically enabled.
+
+Completion checkpoint is a report/task/evidence-only commit after the qualified feature SHA. Historical exact-SHA evidence remains valid; no application, test or content changes are included in the checkpoint. Owner visual acceptance remains pending under REVIEW; the unrelated Circle task pointer is unchanged.

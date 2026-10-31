@@ -1,6 +1,6 @@
 ---
 task_id: STUDY-DAILY-EXAMPLES-20261031
-status: IN_PROGRESS
+status: REVIEW
 executor: Codex
 base_commit: 3e5d50338565b8e01c8644bd4118afb6856e9ca4
 target_branch: product/main
