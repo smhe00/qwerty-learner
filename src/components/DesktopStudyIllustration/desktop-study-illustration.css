@@ -34,10 +34,16 @@
 .desktop-tap-learn-frame .desktop-practice-word-slot { align-self: stretch; width: 100%; }
 .desktop-tap-learn-frame .mobile-practice-input-row { min-height: 18px; }
 .desktop-tap-learn-frame .mobile-practice-actions { padding-bottom: 12px; }
+/* Use desktop width for the sentence instead of squeezing multi-sense meanings
+   below wrapped phone-width text. The action rail remains separate. */
+.desktop-tap-learn-frame.mobile-app { max-width: 880px; }
+.desktop-tap-learn-frame .mobile-practice { max-width: 720px; }
+.desktop-tap-learn-frame .mobile-practice-example-slot { margin-top: 8px; margin-bottom: 2px; }
 /* Reviewed daily sentences are short. Do not reserve the phone's three empty
    lines above the meaning/usage scroller, especially during PC dictation. */
 .desktop-tap-learn-frame [data-study-example-source=daily] .mobile-practice-example {
   display: block;
   min-height: 0;
   max-height: none;
+  max-width: 100%;
 }
