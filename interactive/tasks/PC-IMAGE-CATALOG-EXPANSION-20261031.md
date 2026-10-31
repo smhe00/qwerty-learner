@@ -1,6 +1,6 @@
 ---
 task_id: PC-IMAGE-CATALOG-EXPANSION-20261031
-status: IN_PROGRESS
+status: REVIEW
 executor: Codex
 base_commit: ec6fdddc525ac9f6d4b0f7f771494b478ef4be44
 target_branch: product/main

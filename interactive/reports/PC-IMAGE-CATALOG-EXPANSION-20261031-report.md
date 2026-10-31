@@ -1,6 +1,6 @@
 ---
 task_id: PC-IMAGE-CATALOG-EXPANSION-20261031
-status: IN_PROGRESS
+status: REVIEW
 executor: Codex
 base_commit: ec6fdddc525ac9f6d4b0f7f771494b478ef4be44
 target_branch: product/main
@@ -20,4 +20,6 @@ Local validation: 16/16 dictionary contracts PASS; all 2,207 files decode and ve
 
 Transport: direct git push has no credential in this executor. To avoid thousands of binary API requests, the isolated codex/word-atlas-import-* branch workflow fetches only selected image paths at the pinned source revision, regenerates/validates the exact precomputed metadata and original hashes, and commits assets to that isolated branch only. It cannot advance main/etest/master. The final generated tree must equal the locally validated complete tree before normal main integration and unchanged mandatory Pages gates. No gate is skipped. Only after exact-SHA published Pages qualification may edgeone-test be fast-forwarded by the executor under this user authorization.
 
-Remaining: complete focused browser matrix; persist exact asset candidate and verify tree; integrate main; wait for unchanged mandatory Pages gates and published regression; fast-forward etest once; verify t.smhe.cn source SHA, newly added asset samples and actual PC learning/dictation presentation. This presentation acceptance does not certify real Cloud/Blob synchronization, and it does not authorize master.
+Asset transport PASS: isolated import workflow 41163259145 succeeded; generated asset commit 2ab9c710599142f616f2423c59ffe738c005c952 has exact complete tree 40c101cfcb4e2e6c6bd47b8911aa969529dc71c8, identical to the locally tested complete index. All 2,157 additional original files were committed; the three image/coverage contracts passed again on the runner. Integration adds only this task/report review status and transport evidence, without changing the validated application/assets.
+
+Release execution: qualify the resulting exact SHA through unchanged mandatory Pages UI/deployment/published-regression checks, fast-forward etest once, then verify t.smhe.cn source identity, newly added asset samples and actual PC learning/dictation presentation. Exact post-commit CI and deployment acceptance evidence is retained in GitHub workflow/check metadata for that SHA. Owner acceptance of the expanded scenes remains pending on staging. This presentation acceptance does not certify real Cloud/Blob synchronization, and it does not authorize master.
