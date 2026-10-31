@@ -1,0 +1,138 @@
+{
+  "taskId": "PC-IMAGE-CATALOG-EXPANSION-20261031",
+  "candidate": "714455a41bc49ed0e853a7225792e608f36ba999",
+  "candidateTree": "b3890790e505952611104e586b729fc1df3109d9",
+  "stagingUrl": "https://t.smhe.cn/learn",
+  "stagingMarker": "714455a",
+  "masterObserved": "7eb3631f1614c8c78352a13bcbcae84ba165a290",
+  "masterPromotedByThisTask": false,
+  "coverage": {
+    "dictionaryEntries": 2872,
+    "enabledEntries": 2209,
+    "enabledWords": 2207,
+    "uniqueImages": 2207,
+    "guardedMappings": 2208,
+    "excludedEntries": 47,
+    "missingEntries": 616,
+    "imageBytes": 58908608
+  },
+  "dictionarySha256": "ffcbfcf7950f824c4d0666facd028171520ab9baf0b59e7fc91f5f9e7f3ab9b5",
+  "liveImages": {
+    "http200": 2207,
+    "originalSha256Matched": 2207,
+    "decoded512x512": 2207,
+    "failures": 0
+  },
+  "localValidation": {
+    "dictionaryContracts": 16,
+    "desktopBrowserJourneys": 26,
+    "productionBuild": "pass",
+    "cssOwnership": "pass",
+    "deterministicRegeneration": "pass"
+  },
+  "pagesRun": 41166494071,
+  "sourceCloudRun": 41166494044,
+  "stagingAdmissionRun": 41166494048,
+  "sourceUi": [
+    {
+      "job": 124435173555,
+      "summaries": [
+        "2026-10-31T03:59:10.3804308Z   8 skipped",
+        "2026-10-31T03:59:10.3804632Z   22 passed (28.2s)",
+        "2026-10-31T03:59:52.3425039Z   48 skipped",
+        "2026-10-31T03:59:52.3425441Z   30 passed (41.4s)",
+        "2026-10-31T04:04:47.3510380Z   16 skipped",
+        "2026-10-31T04:04:47.3529056Z   200 passed (4.9m)",
+        "2026-10-31T04:05:13.3852799Z   17 passed (25.4s)"
+      ]
+    },
+    {
+      "job": 124435173768,
+      "summaries": [
+        "2026-10-31T03:59:12.1584927Z   8 skipped",
+        "2026-10-31T03:59:12.1585324Z   22 passed (35.8s)",
+        "2026-10-31T04:00:04.0394707Z   48 skipped",
+        "2026-10-31T04:00:04.0395594Z   30 passed (51.1s)",
+        "2026-10-31T04:03:52.1297845Z   130 skipped",
+        "2026-10-31T04:03:52.1298255Z   86 passed (3.8m)",
+        "2026-10-31T04:04:26.9691715Z   17 passed (34.0s)",
+        "2026-10-31T04:05:10.6636360Z   4 skipped",
+        "2026-10-31T04:05:10.6636826Z   20 passed (42.9s)"
+      ]
+    }
+  ],
+  "stagingWorkflows": [
+    {
+      "id": 41167374742,
+      "name": "etest Single-Session M3 Device Relay",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/41167374742"
+    },
+    {
+      "id": 41167374759,
+      "name": "etest Account Cleanup Outcome",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/41167374759"
+    },
+    {
+      "id": 41167374699,
+      "name": "Deployed code automatic idle cleanup qualification",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/41167374699"
+    },
+    {
+      "id": 41167374701,
+      "name": "etest Segmented History Resume",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/41167374701"
+    },
+    {
+      "id": 41167374718,
+      "name": "etest Learn Completion Cloud Journey",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/41167374718"
+    },
+    {
+      "id": 41167374740,
+      "name": "etest Single-Session Three-Device Offline Relay E2E",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/41167374740"
+    },
+    {
+      "id": 41167374730,
+      "name": "etest Historical Login Full-V4 E2E",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/41167374730"
+    },
+    {
+      "id": 41167374725,
+      "name": "Branch EdgeOne Cloud E2E",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/41167374725"
+    }
+  ],
+  "manualBrowser": {
+    "browser": "Chrome",
+    "viewport": [
+      1363,
+      936
+    ],
+    "learningWord": "ability",
+    "newDictationWord": "bakery",
+    "wordImageCenterDifference": 0,
+    "exampleBelowImage": true,
+    "englishHiddenDuringDictation": true,
+    "dictationAlt": "单词场景插画",
+    "caption": "",
+    "personalAccountUsed": false
+  },
+  "remaining": "Owner visual acceptance; expanded scenes received whole-catalog contact-sheet screening rather than individual pixel-level certification. Images remain PC-only."
+}
