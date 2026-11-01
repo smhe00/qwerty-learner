@@ -1,0 +1,230 @@
+{
+  "status": "PASS",
+  "releaseDate": "2026-11-01",
+  "timezone": "Asia/Shanghai",
+  "ownerAuthorization": "直接更新到etest+master",
+  "releasedSha": "fba0d8de2e14225844be10fb1778825ff6c8c585",
+  "applicationSourceBase": "c5781c84d5b19a4a8981314ced75326604d0a706",
+  "preparationChanges": [
+    ".github/workflows/cloud-sync.yml comment only",
+    "release task/report documentation"
+  ],
+  "promotion": {
+    "sha": "fba0d8de2e14225844be10fb1778825ff6c8c585",
+    "previous": "7eb3631f1614c8c78352a13bcbcae84ba165a290",
+    "mainAtPromotion": "fba0d8de2e14225844be10fb1778825ff6c8c585",
+    "cloudRun": 41286686245,
+    "pagesRun": 41286675822,
+    "sourceCloudRun": 41286675828,
+    "hardThreeDeviceRun": 41286686174
+  },
+  "content": {
+    "reviewedHeadwords": 219,
+    "supplementaryDailyExamples": 216,
+    "pairedImages": 92,
+    "unreviewedDictionaryEntries": 2653,
+    "originalImagesRetained": 2207
+  },
+  "authoritativeDictionary": {
+    "entries": 2872,
+    "comparedAgainstPreviousMaster": "7eb3631f1614c8c78352a13bcbcae84ba165a290",
+    "fields": [
+      "name",
+      "trans",
+      "ukphone",
+      "usphone",
+      "example",
+      "tags",
+      "notation"
+    ],
+    "fieldChanges": 0,
+    "sha256": "ffcbfcf7950f824c4d0666facd028171520ab9baf0b59e7fc91f5f9e7f3ab9b5"
+  },
+  "qualification": {
+    "pagesRun": 41286675822,
+    "pagesAttempt": 2,
+    "sourceCloudRun": 41286675828,
+    "sourceCloudAttempt": 2,
+    "sourceCloudContracts": 1077,
+    "cloudRun": 41286686245,
+    "cloudAttempt": 2,
+    "releaseReadyJob": 124793908357,
+    "hardThreeDeviceRun": 41286686174,
+    "allEightStagingWorkflows": "success",
+    "pagesProductionBuild": {
+      "dictionaryContracts": 21,
+      "dictionaryJourneys": 22,
+      "imageExampleJourneys": 50,
+      "uiJourneys": 86,
+      "primaryActions": 17,
+      "offlineAccountJourneys": 20
+    },
+    "edgeoneProductionBuild": {
+      "dictionaryContracts": 21,
+      "dictionaryJourneys": 22,
+      "imageExampleJourneys": 50,
+      "uiJourneys": 200,
+      "primaryActions": 17
+    },
+    "publishedRegression": 9
+  },
+  "production": {
+    "url": "https://q.smhe.cn/learn",
+    "deployedMarker": "fba0d8d",
+    "verificationRun": 41288351673,
+    "verificationJob": 124794196902,
+    "conclusion": "success",
+    "checks": [
+      "exact source marker",
+      "gateway health/capability",
+      "four mobile route entries"
+    ],
+    "makerReadOnlyMigrationRun": 41288351642,
+    "manualBrowser": [
+      "footer fba0d8d",
+      "ability repair sentence without incompatible riding picture",
+      "able swimming picture/daily sentence",
+      "original reference-book syllabus sentence and Chinese translation still accessible"
+    ],
+    "screenshot": "interactive/evidence/production-study-content-fba0d8d-1793521375181.jpg"
+  },
+  "etest": {
+    "url": "https://t.smhe.cn/learn",
+    "deployedMarker": "fba0d8d",
+    "manualFooterVerified": true
+  },
+  "retryNotes": [
+    "One Pages assertion sampled 41.8px during a 44px link's scale(0.95) dialog entrance; unchanged 44px assertion passed on targeted rerun.",
+    "Source admission and release-ready checks initially observed the unfinished/failed Pages run; reran only these read-only checks after dependencies qualified. Passed live browser/transport jobs were retained."
+  ],
+  "existingPostReleaseCiDebt": {
+    "run": 41288548913,
+    "conclusion": "failure",
+    "reason": "Unchanged legacy cloud-sync-live.spec.ts waits for retired learning-state-backup-v3 capability; its legacy cleanup also fails.",
+    "baselineMasterRun": 41019627610,
+    "baselineMasterSha": "7eb3631f1614c8c78352a13bcbcae84ba165a290",
+    "sameFailureOnBaseline": true,
+    "legacyFilesChanged": false,
+    "registrationNotReached": true,
+    "currentV4ReleaseGates": "success",
+    "followupTask": "interactive/tasks/LEGACY-V3-BROWSER-GATE-20261101.md"
+  },
+  "workflowRuns": [
+    {
+      "id": 41288548913,
+      "name": "EdgeOne Browser Sync Gate",
+      "branch": "master",
+      "status": "completed",
+      "conclusion": "failure",
+      "attempt": 1
+    },
+    {
+      "id": 41288351642,
+      "name": "Maker V4 Migration Live Readiness",
+      "branch": "master",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1
+    },
+    {
+      "id": 41288351673,
+      "name": "EdgeOne Production Verify",
+      "branch": "master",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1
+    },
+    {
+      "id": 41286686188,
+      "name": "Deployed code automatic idle cleanup qualification",
+      "branch": "edgeone-test",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1
+    },
+    {
+      "id": 41286686183,
+      "name": "etest Account Cleanup Outcome",
+      "branch": "edgeone-test",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1
+    },
+    {
+      "id": 41286686195,
+      "name": "etest Single-Session M3 Device Relay",
+      "branch": "edgeone-test",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1
+    },
+    {
+      "id": 41286686176,
+      "name": "etest Segmented History Resume",
+      "branch": "edgeone-test",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1
+    },
+    {
+      "id": 41286686219,
+      "name": "etest Learn Completion Cloud Journey",
+      "branch": "edgeone-test",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1
+    },
+    {
+      "id": 41286686174,
+      "name": "etest Single-Session Three-Device Offline Relay E2E",
+      "branch": "edgeone-test",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1
+    },
+    {
+      "id": 41286686181,
+      "name": "etest Historical Login Full-V4 E2E",
+      "branch": "edgeone-test",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1
+    },
+    {
+      "id": 41286686245,
+      "name": "Branch EdgeOne Cloud E2E",
+      "branch": "edgeone-test",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 2
+    },
+    {
+      "id": 41286675822,
+      "name": "Deployment to GitHub Pages",
+      "branch": "product/main",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 2
+    },
+    {
+      "id": 41286675828,
+      "name": "Cloud Sync Gate",
+      "branch": "product/main",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 2
+    },
+    {
+      "id": 41286675797,
+      "name": "Pages Explorer Agent",
+      "branch": "product/main",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "attempt": 1
+    }
+  ],
+  "limits": [
+    "Reviewed batch only; remaining examples/images not enabled without review.",
+    "Chromium verification does not constitute physical iOS/HarmonyOS certification."
+  ]
+}
