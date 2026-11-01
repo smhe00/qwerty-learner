@@ -1,4 +1,5 @@
 name: Cloud Sync Gate
+# 2026-11-01 owner-authorized image/example release: qualify the unchanged app at the release candidate SHA.
 
 on:
   push:
