@@ -143,7 +143,12 @@ block local completion.
 
 ## 5. Cloud synchronization
 
-> Approved next-state design: [`CLOUD_SYNC_V2_MODEL.md`](./CLOUD_SYNC_V2_MODEL.md). Until its implementation and executable contracts land, `SPEC-SYNC-001` below remains the current production contract.
+> Implementation cross-check: 2026-10-26, `product/main@875c82a2`.
+> The current implementation guide is [CLOUD_SYNC_ARCHITECTURE.md](./CLOUD_SYNC_ARCHITECTURE.md).
+> [CLOUD_SYNC_V2_MODEL.md](./CLOUD_SYNC_V2_MODEL.md) records the protocol design and
+> bounded formal model; its V2 name does not mean that Backup V4 or guarded
+> synchronization is unimplemented. A model or local test pass is not deployed
+> Cloud/Blob acceptance. This clarification changes no runtime behavior.
 
 ### SPEC-SYNC-V2-FORMAL-001 — Sync V2 protocol has one executable distributed state machine
 
@@ -163,19 +168,37 @@ model. A behavior that cannot be represented by a legal formal transition
 requires either an implementation fix or an explicit protocol/specification
 change.
 
-### SPEC-SYNC-001 — Safe completion-only auto upload
+### SPEC-SYNC-001 — Guarded V4 synchronization preserves durable local progress
 
-After DailySession completion, automatic cloud upload may occur only when:
+Local completion is committed before a cloud handoff. On a cloud-enabled
+deployment, a valid signed-in account can request the existing guarded V4 flow
+after Daily completion or an execution-exhausted round. An exhausted round does
+not certify mastery. Other visible Block milestones require the device-local,
+account-scoped opt-in, which defaults to off. Pages keeps cloud disabled.
 
-```text
-authenticated
-AND localDirty
-AND NOT remoteChanged
-```
+`LearnResultScreen` stages the account-bound intent through `learn-block-sync`
+and navigates to a new document. The guarded pre-mount executor must obtain the
+writer lease and perform the existing session, owner, journal and snapshot
+checks before cloud reconciliation. Mounted UI must not directly replace the
+working database. The same protected infrastructure also supports login/startup
+and explicit synchronization; it is not a completion-only upload service.
 
-Remote-ahead, diverged, unsupported, conflict, auth failure, or network failure
-must never overwrite remote state automatically and must never roll back local
-Daily completion.
+Reconciliation may be a no-op, safe upload, verified pull, or a supported
+same-account merge. A remote-ahead or diverged state is not permission for a
+blind overwrite. Unsupported evidence, conflicts, authentication failures and
+network failures must preserve local progress and recovery evidence. Unknown
+commit results must not be blindly replayed. An event receipt does not prove
+that all six V4 tables and all devices have converged.
+
+The old `src/sync/auto.ts` completion-only upload helper is not the current
+Learn completion UI entry point. Its conservative one-way rule remains a
+description of that legacy helper, not the complete product synchronization
+contract. Historical V3 browser tests are likewise not current V4 release proof.
+
+Verification is separated in the gate manifest: local completion/handoff
+contracts, backend contracts, exact-SHA etest completion readback, and the
+retained legacy browser harness. Listing a workflow here does not authorize
+dispatching it or claim that its current deployed run has passed.
 
 ## 6. Audio
 

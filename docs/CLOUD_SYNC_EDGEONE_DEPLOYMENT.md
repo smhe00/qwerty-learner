@@ -1,7 +1,13 @@
-# EdgeOne Makers 部署与 P4 实机验收
+# EdgeOne Makers 部署与 P4 实机验收（历史记录）
 
-> 当前产品分支：`product/main`  
-> 权威开发状态：`docs/CLOUD_SYNC_DEVELOPMENT_PLAN.md`
+> **2026-10-26 权威性说明：下文保留 P4/P8 阶段的操作与验收记录，不是当前部署指令。**
+> 当前分支角色与发布权限以 [AGENTS.md](../AGENTS.md) 为准，运行架构见 [当前云同步架构](./CLOUD_SYNC_ARCHITECTURE.md)。
+> `product/main` 只用于持续开发与禁用云能力的 Pages 预览，禁止把 Maker 生产项目绑定到它。
+> `edgeone-test` 固定候选并在 `t.smhe.cn` 独立验证；`master` 是 `q.smhe.cn` 的正式发布线，包含云后端。
+> 仅在明确发布授权和候选同 SHA 验收满足后，将 master 快进到该候选。main 可以继续前进，不要求三个分支头相同。
+> 本次仅修正文档；不变更项目绑定、配置、数据、部署分支或既有门禁。
+
+以下章节中的项目 ID、平台限制、保留数、命令和测试结果均有各自历史上下文；执行前须重新核对，不能据此重试未知写入或清理真实数据。
 
 ## 1. 部署目标
 
@@ -23,20 +29,17 @@ EdgeOne Blob strong consistency / onlyIfNew
 
 P4 PASS 前继续保持 `src/` 零修改。
 
-## 2. 在 EdgeOne Makers 导入 GitHub
+## 2. P4/P8 历史导入流程（不再执行旧分支映射）
 
-在 EdgeOne Makers 控制台创建项目：
+当时在 EdgeOne Makers 控制台创建项目的步骤记录：
 
 1. 选择 **导入 Git 仓库**。
 2. 连接 GitHub。
 3. 选择 `smhe00/qwerty-learner`。
-4. P4 首次创建 Makers 项目时历史上使用 `feature/edgeone-cloud-sync` 作为生产分支；集成 RC 通过后，正式产品分支应切换为 `product/main`。
+4. P4 首次创建时使用 `feature/edgeone-cloud-sync`，当时曾计划 RC 后切到 `product/main`。该计划已被现行 master 发布规则替代，不得继续应用。
 5. 根目录保持仓库根目录。
 
-> `feature/edgeone-cloud-sync` 只是 P4/P8 验证阶段的临时生产映射。当前仓库唯一产品主线已经收敛到 `product/main`。
-> 当前 upstream `master` 本身可以作为纯静态 Vite 站点部署；它此前的部署失败不是因为缺少 Cloud Functions，而是 EdgeOne 默认查找 `dist/`，而该项目实际由 Vite 输出到 `build/`。
-> 但 `master` 不包含云后端，因此不能用于 P4 的 Auth/Sync/Blob 验证。
-> P4/P5 稳定后再决定最终生产分支（例如专门的稳定分支或合并后的 fork 主分支）。
+> 当时的 upstream master 是纯静态来源分支，曾有 `dist/` 与实际 `build/` 不一致的问题。这不是当前 master 的角色或文件清单；当前 master 已是正式云产品发布线。
 
 仓库已包含 `edgeone.json`，用于固定：
 
@@ -226,7 +229,7 @@ build.outDir = "build"
 
 `product/main` 根目录的 `edgeone.json` 已显式设置 `"outputDirectory": "./build"`。
 
-对于 upstream `master`，若单独部署纯静态站点，需要在 Makers 控制台把“输出目录”手工设为 `build`，因为该分支没有 `edgeone.json`。
+当时的 upstream master 静态快照没有 `edgeone.json`，因此曾手工选择 `build`。此历史差异不得用于判断当前 master 的配置或覆盖当前项目绑定。
 
 另外：
 
@@ -234,10 +237,10 @@ build.outDir = "build"
 No server-handler detected, generating routes.json for pure project...
 ```
 
-对于没有 Cloud Functions 的 `master` 是正常信息，不是构建失败原因。
+该提示仅描述当时没有 Cloud Functions 的静态快照。当前正式云部署必须依据所验收的 SHA 和实际 Cloud/Blob 检查，不能用这条历史说明忽略后端缺失。
 
 
-## 10. Current verified Makers identity
+## 10. Historically verified Makers identity
 
 For the current international-site project:
 

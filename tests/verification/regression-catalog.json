@@ -7,7 +7,15 @@
       "tests": [
         {
           "file": "tests/simulation/system-driver.test.ts",
-          "title": "full VirtualLearnApp blindly rediscovers the admitted-based singleton loop mutation"
+          "title": "full VirtualLearnApp remains stable at the historical 19-of-20 acquisition boundary"
+        },
+        {
+          "file": "tests/simulation/system-driver.test.ts",
+          "title": "continuous practice prevents the historical singleton churn even with admitted-based quota accounting"
+        },
+        {
+          "file": "tests/simulation/system-oracle.test.ts",
+          "title": "generic oracle blindly detects admitted-based quota mutation through repeated singleton behavior"
         },
         {
           "file": "tests/simulation/system-driver.test.ts",

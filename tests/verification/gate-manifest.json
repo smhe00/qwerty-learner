@@ -51,6 +51,21 @@
       "id": "cloud",
       "workflow": ".github/workflows/cloud-sync.yml",
       "owner": "cloud-sync"
+    },
+    {
+      "id": "learn-completion",
+      "workflow": ".github/workflows/learn-completion-journey.yml",
+      "owner": "learn-completion-local"
+    },
+    {
+      "id": "etest-learn-completion",
+      "workflow": ".github/workflows/etest-learn-completion.yml",
+      "owner": "learn-completion-real-cloud"
+    },
+    {
+      "id": "cloud-browser-legacy",
+      "workflow": ".github/workflows/edgeone-browser-sync-gate.yml",
+      "owner": "legacy-cloud-browser-compatibility"
     }
   ],
   "contracts": [
@@ -196,6 +211,25 @@
       "owner": "formal/learn",
       "gate": "tla",
       "tests": [
+        "formal/learn/LearnSystem.tla",
+        "formal/learn/LearnSystem.production.cfg",
+        "formal/learn/LearnSystem.acquired-mutation.cfg",
+        "formal/learn/CheckpointMonotonicity.tla",
+        "formal/learn/CheckpointMonotonicity.production.cfg",
+        "formal/learn/CheckpointMonotonicity.stale-mutation.cfg"
+      ],
+      "specs": [
+        "SPEC-RECOVERY-001",
+        "SPEC-PERSIST-001"
+      ]
+    },
+    {
+      "id": "LEARN-FORMAL-BRIDGE-001",
+      "title": "Learn TLC trace bridge and oracle classification are tested separately from model checking",
+      "level": "L1",
+      "owner": "tests/formal/tla-trace-bridge.ts",
+      "gate": "review",
+      "tests": [
         "tests/formal/tla-trace-bridge.test.ts"
       ],
       "specs": [
@@ -234,12 +268,58 @@
     },
     {
       "id": "SYNC-LEARN-001",
-      "title": "Daily completion sync uploads only when local is safely ahead",
+      "title": "Durable Learn completion and opted-in visible Block boundaries use guarded V4 handoff",
       "level": "L0",
-      "owner": "src/sync/auto.ts",
+      "owner": "src/sync/learn-block-sync.ts",
+      "gate": "learn-completion",
+      "tests": [
+        "tests/cloud/learn-block-auto-sync.test.mjs",
+        "tests/e2e/learn-completion-journey.spec.ts",
+        "tests/e2e/learn-block-sync-guarded.spec.ts",
+        "tests/e2e/learn-block-sync-ui.spec.ts"
+      ],
+      "specs": [
+        "SPEC-SYNC-001",
+        "SPEC-PERSIST-001"
+      ]
+    },
+    {
+      "id": "SYNC-BACKEND-001",
+      "title": "Backend account ownership, V4 verification and revision conflicts remain fail-closed",
+      "level": "L1",
+      "owner": "cloud-functions/_shared/core.js",
       "gate": "cloud",
       "tests": [
         "tests/cloud/backend-core.test.mjs",
+        "tests/cloud/sync-v4-server.test.mjs",
+        "tests/cloud/v4-http-parts.test.mjs"
+      ],
+      "specs": [
+        "SPEC-SYNC-001",
+        "SPEC-PERSIST-001"
+      ]
+    },
+    {
+      "id": "SYNC-LEARN-LIVE-001",
+      "title": "Learn completion has separate exact-SHA etest cloud readback acceptance",
+      "level": "L2",
+      "owner": "src/pages/Learn/components/LearnResultScreen.tsx",
+      "gate": "etest-learn-completion",
+      "tests": [
+        "tests/e2e/etest-learn-completion.spec.ts"
+      ],
+      "specs": [
+        "SPEC-SYNC-001",
+        "SPEC-PERSIST-001"
+      ]
+    },
+    {
+      "id": "SYNC-LEGACY-BROWSER-001",
+      "title": "Legacy V3 auth/snapshot browser harness is historical compatibility evidence, not current V4 acceptance",
+      "level": "L2",
+      "owner": "tests/e2e/cloud-sync-live.spec.ts",
+      "gate": "cloud-browser-legacy",
+      "tests": [
         "tests/e2e/cloud-sync-live.spec.ts"
       ],
       "specs": [
